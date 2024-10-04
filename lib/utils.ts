@@ -1,6 +1,8 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import {Post} from "@/.velite";
+import {slug} from "github-slugger";
+
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))

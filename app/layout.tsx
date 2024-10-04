@@ -5,6 +5,7 @@ import { FloatingNavDemo } from "@/components/Nav"
 import {Providers} from "@/components/Providers";
 import {SiteFooter} from "@/components/Fotter";
 import {MobileNav} from "@/components/MobileNav";
+import React from "react";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -35,6 +36,8 @@ export default function RootLayout({
       >
 
     <Providers>
+        <MobileNav/>
+
         <div>
             {/*<NavbarDemo />*/}
             <FloatingNavDemo />

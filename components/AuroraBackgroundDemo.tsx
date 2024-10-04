@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import React from "react";
 import { AuroraBackground } from "./ui/aurora-background";
 import { FloatingDockDemo } from "./DockDemo";
-import { CardHoverEffectDemo } from "./CardPost";
+import { CardPost } from "./CardPost";
 import ThemeToggle from "@/components/Toggle";
 import {MobileNav} from "@/components/MobileNav";
 
@@ -36,7 +36,7 @@ export function AuroraBackgroundDemo() {
                        <ThemeToggle />
                    </div>
 
-                   <CardHoverEffectDemo />
+                   <CardPost />
 
                </motion.div>
            </AuroraBackground>

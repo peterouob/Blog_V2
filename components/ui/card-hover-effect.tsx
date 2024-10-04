@@ -1,3 +1,5 @@
+"use client"
+
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
@@ -14,11 +16,11 @@ interface HoverEffectProps {
 
 export const HoverEffect = ({slug,title,description,date,tags,className} : HoverEffectProps) => {
   let [hoveredIndex, setHoveredIndex] = useState<string | null>(null);
-
+  console.log(tags)
   return (
     <div
       className={cn(
-        "lg:grid hidden lg:grid-cols-1 rounded-2xl shadow-none p-4 overflow-y-auto transition-shadow duration-300 cursor-pointer hover:shadow-lg hover:shadow-gray-400",
+        "lg:grid-cols-1 rounded-2xl shadow-none p-4 overflow-y-auto transition-shadow duration-300 cursor-pointer hover:shadow-lg hover:shadow-gray-400",
         className
       )}
     >
@@ -33,6 +35,8 @@ export const HoverEffect = ({slug,title,description,date,tags,className} : Hover
         <Card>
           <CardTitle>{title}</CardTitle>
           <CardDescription>{description}</CardDescription>
+          {tags?.map(tag=><CardTag tag={tag} key={tag}/>)}
+
         </Card>
       </Link>
     </div>
@@ -91,3 +95,11 @@ export const CardDescription = ({
     </p>
   );
 };
+
+export const CardTag = ({className,children} : { className?: string; children: React.ReactNode}) => {
+  return (
+      <div className="flex gap-2">
+        {children}
+      </div>
+  )
+}

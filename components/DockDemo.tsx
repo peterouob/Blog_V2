@@ -29,7 +29,7 @@ export function FloatingDockDemo() {
             icon: (
                 <IconTerminal2 className="h-full w-full text-neutral-500 dark:text-neutral-300" />
             ),
-            href: "#",
+            href: "/blog",
         },
         {
             title: "Components",
@@ -62,7 +62,7 @@ export function FloatingDockDemo() {
 
     ];
     return (
-        <div className="flex items-center justify-center h-[15rem] text-3xl ">
+        <div className="lg:flex lg:items-center lg:justify-center lg:h-[15rem] lg:text-3xl ">
             <FloatingDock
                 items={links}
             />

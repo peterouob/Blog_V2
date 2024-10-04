@@ -4,7 +4,7 @@ import {Icons} from "@/components/icon";
 
 export function SiteFooter(){
     return <footer>
-        <div className="mb-6 mt-14 flex flex-col items-center">
+        <div className=" mt-14 flex flex-col items-center">
             <div className="mb-3 flex space-x-4">
                 <a target="_blank" rel="noreferrer" href="hellolinpeter@gmail.com">
                     <span className="sr-only">Mail</span>
@@ -25,7 +25,7 @@ export function SiteFooter(){
                     <Icons.gitlab className="h-8 w-8" />
                 </a>
             </div>
-            <div className="mb-2 flex space-x-2 text-sm text-muted-foreground">
+            <div className="flex space-x-2 text-md text-muted-foreground">
                 {siteConfig.authors}
             </div>
         </div>

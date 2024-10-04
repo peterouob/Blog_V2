@@ -2,8 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-
-
 @layer base {
   * {
     @apply border-border;
@@ -14,6 +12,9 @@
   html, body {
     font-family: monospace;
     overflow-x: hidden;
+  }
+  ul li{
+    @apply text-base lg:text-2xl
   }
   :root {
     --background: 0 0% 100%;
