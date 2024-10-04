@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
-import { useState } from "react";
+import React, { useState } from "react";
 
 interface HoverEffectProps {
   slug: string,
@@ -34,7 +34,7 @@ export const HoverEffect = ({slug,title,description,date,tags,className} : Hover
         <Card>
           <CardTitle>{title}</CardTitle>
           <CardDescription>{description}</CardDescription>
-          {tags?.map(tag=><CardTag tag={tag} key={tag}/>)}
+          {tags?.map(tag=><CardTag key={tag}/>)}
 
         </Card>
       </Link>
@@ -95,9 +95,15 @@ export const CardDescription = ({
   );
 };
 
-export const CardTag = ({className,children} : { className?: string; children: React.ReactNode}) => {
+interface CardTagProps {
+  className?:string
+  children?: React.ReactNode
+  key?:  string | any | undefined
+}
+
+export const CardTag = ({children,key,className} : CardTagProps) => {
   return (
-      <div className="flex gap-2">
+      <div className="flex gap-2" key={key}>
         {children}
       </div>
   )
