@@ -4,29 +4,10 @@ import {Icons} from "@/components/icon";
 
 export function SiteFooter(){
     return <footer>
-        <div className=" mt-14 flex flex-col items-center">
-            <div className="mb-3 flex space-x-4">
-                <a target="_blank" rel="noreferrer" href="hellolinpeter@gmail.com">
-                    <span className="sr-only">Mail</span>
-                    <Mail className="h-8 w-8" />
-                </a>
-                <a target="_blank" rel="noreferrer" href={siteConfig.links.github}>
-                    <span className="sr-only">Github</span>
-                    <Icons.github className="h-8 w-8" />
-                </a>
+        <div className=" flex flex-col items-center">
 
-                <a target="_blank" rel="noreferrer" href={siteConfig.links.instagram}>
-                    <span className="sr-only">Instagram</span>
-                    <Icons.instagram className="h-8 w-8" />
-                </a>
-
-                <a target="_blank" rel="noreferrer" href={siteConfig.links.gitlab}>
-                    <span className="sr-only">Gitlab</span>
-                    <Icons.gitlab className="h-8 w-8" />
-                </a>
-            </div>
             <div className="flex space-x-2 text-md text-muted-foreground">
-                {siteConfig.authors}
+                &copy; {siteConfig.copyright}
             </div>
         </div>
     </footer>

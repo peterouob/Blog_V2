@@ -16,7 +16,6 @@ interface HoverEffectProps {
 
 export const HoverEffect = ({slug,title,description,date,tags,className} : HoverEffectProps) => {
   let [hoveredIndex, setHoveredIndex] = useState<string | null>(null);
-  console.log(tags)
   return (
     <div
       className={cn(

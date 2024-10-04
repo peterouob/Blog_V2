@@ -1,12 +1,9 @@
 import {posts} from "#site/content"
-import {CardPost} from "@/components/CardPost";
 import {getAllTags, sortPosts, sortTagsByCount} from "@/lib/utils";
 import {QueryPagination} from "@/components/QueryPagination";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {Tag} from "@/components/Tags";
 import {PostItem} from "@/components/PostItem";
-import {PageHeader} from "@/components/PageHeader";
-import {AuroraBackground} from "@/components/Aurora";
 import {AuroraBackgroundPage} from "@/components/AuroraBackgroundDemo";
 
 const POST_PRE_PAGE = 3
@@ -29,7 +26,7 @@ export default async function BlogPage({searchParams}:BlogPageProps){
     const tags = getAllTags(posts)
     const sortedTags = sortTagsByCount(tags)
     return (
-        <AuroraBackgroundPage className="hidden">
+        <AuroraBackgroundPage>
         <div className="container lg:py-10 dark:bg-zinc-700/10 bg-zinc-50 shadow-2xl rounded-lg ">
             <div className="hidden lg:grid flex flex-col items-start gap-4 md:flex-row md:justify-between md:gap-8">
                 <div className="flex-1 space-y-4">

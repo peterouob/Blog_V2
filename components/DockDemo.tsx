@@ -1,15 +1,13 @@
 import React from "react";
 import { FloatingDock } from "@/components/ui/floating-dock";
 import {
-    IconBrandGithub,
-    IconBrandX,
-    IconExchange,
-    IconHome, IconMoon,
-    IconNewSection, IconSun,
+    IconBrandGithub, IconBrandGitlab, IconBrandGmail, IconBrandInstagram,
+    IconHome,
     IconTerminal2,
 } from "@tabler/icons-react";
 import theme from "tailwindcss/defaultTheme";
 import {useTheme} from "next-themes";
+import {siteConfig} from "@/config/site";
 
 
 export function FloatingDockDemo() {
@@ -25,39 +23,39 @@ export function FloatingDockDemo() {
         },
 
         {
-            title: "Products",
+            title: "Blog",
             icon: (
                 <IconTerminal2 className="h-full w-full text-neutral-500 dark:text-neutral-300" />
             ),
             href: "/blog",
         },
         {
-            title: "Components",
+            title: "Gitlab",
             icon: (
-                <IconNewSection className="h-full w-full text-neutral-500 dark:text-neutral-300" />
+                <IconBrandGitlab className="h-full w-full text-neutral-500 dark:text-neutral-300" />
             ),
-            href: "#",
+            href: siteConfig.links.gitlab,
         },
         {
-            title: "Changelog",
+            title: "Gmail",
             icon: (
-                <IconExchange className="h-full w-full text-neutral-500 dark:text-neutral-300" />
+                <IconBrandGmail className="h-full w-full text-neutral-500 dark:text-neutral-300" />
             ),
-            href: "#",
+            href: siteConfig.links.gmail,
         },
         {
-            title: "Twitter",
+            title: "Instagram",
             icon: (
-                <IconBrandX className="h-full w-full text-neutral-500 dark:text-neutral-300" />
+                <IconBrandInstagram className="h-full w-full text-neutral-500 dark:text-neutral-300" />
             ),
-            href: "#",
+            href: siteConfig.links.instagram,
         },
         {
             title: "GitHub",
             icon: (
                 <IconBrandGithub className="h-full w-full text-neutral-500 dark:text-neutral-300" />
             ),
-            href: "#",
+            href: siteConfig.links.github,
         },
 
     ];
