@@ -46,6 +46,7 @@ export default async function BlogPage({searchParams}:BlogPageProps){
                                         title={title}
                                         description={description}
                                         tags={tags}
+                                        key={slug}
                                     />
                                 </li>
                             </ul>
