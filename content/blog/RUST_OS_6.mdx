@@ -1,0 +1,18 @@
+---
+title: 使用RUST編寫OS(6)-Hardware Interrupt
+description: 學習RUST同時學習OS
+date: 2024-7-26
+tags: ["rust","code","os"]
+---
+
+## 中斷
+- 中斷是硬體對cpu發送通知的一種方式，除了使用輪巡法定期檢查鍵盤輸入以外，由鍵盤主動通知內核按輸入也是可行的，而且會極大降低系統延遲，因為內核無需等待下一個週期
+- 使用中斷控制器進行統一管理
+```go
+                     ____________             _____
+Timer ------------> |            |           |     |
+Keyboard ---------> | Interrupt  |---------> | CPU |
+Other Hardware ---> | Controller |           |_____|
+Etc. -------------> |____________|
+ 
+```

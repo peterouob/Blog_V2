@@ -1,0 +1,743 @@
+---
+title: c++ OOP
+description: 使用c++演示基本OOP
+date: 2023-04-16
+tags: ["code","c++"]
+---
+
+## OOP ?
+- 為什麼需要？
+我們希望機器能讀懂要做什麼，將程式碼編寫成人類行爲方便閱讀
+
+### 初探OOP
+- 其中最主要的就是纇(Class)這個物件，而在類中，定義類型為最重要的一件事
+- 在類中有3個修飾符，分別是private,protected和public，默認為private
+- private外界無法訪問(黑色地帶)
+- protected介於private和public中間，繼承時用到(灰色地帶)
+- product外界可以訪問(白色地帶)
+#### 編寫代碼
+
+```c++
+#include <bits/stdc++.h>
+using namespace std;
+class Employee{
+protected
+public:
+    string Name;
+    string Company;
+    int Age;
+
+    void IntroduceYourSelf(){
+        cout << "Name - " << Name  << endl;
+        cout << "Company - " << Company  << endl;
+        cout << "Age - " << Age  << endl;
+    }
+};
+
+int main(int argc, const char * argv[]) {
+    // insert code here...
+    Employee employee;
+    employee.Name = "peter";
+    employee.Company = "yuntech";
+    employee.Age = 18;
+    employee.IntroduceYourSelf();
+    return 0;
+}
+
+```
+### 存在問題？
+- 如果我們今天有100筆資料，修改繁雜且緩慢
+- 使用構造函數(Constructors)解決
+
+## Constructors
+- Constructors遵守3條規則
+1. 沒有函數返回值，包括void類型定義
+2. 函數名稱和類名稱相同
+3. 請將Constructors放在public，他可以放在其他地方但很麻煩
+### Default Constructors
+- 當你沒有編寫任何構造函數時，編譯器會自動編譯
+#### 編寫代碼
+```c++
+#include <bits/stdc++.h>
+using namespace std;
+class Employee{
+public:
+    string Name;
+    string Company;
+    int Age;
+    void IntroduceYourSelf(){
+        cout << "Name - " << Name  << endl;
+        cout << "Company - " << Company  << endl;
+        cout << "Age - " << Age  << endl;
+    }
+    Employee(string name,string company,int age){
+        Name = name;
+        Company = company;
+        Age = age;
+    }
+};
+
+int main(int argc, const char * argv[]) {
+    // insert code here...
+    Employee employee = Employee("peter","yuntech",18);
+    employee.IntroduceYourSelf();
+    return 0;
+}
+```
+
+## OOP最重要的事情
+1. 封裝
+2. 抽象
+3. 繼承
+4. 多態性
+
+### 1.什麼是封裝
+- 不希望其他的類可以直接對纇進行操作，將值放入private
+- 封裝中主要使用setter和geter方法對值進行操作
+
+```c++
+#include <bits/stdc++.h>
+using namespace std;
+class Employee{
+private:
+    string Name;
+    string Company;
+    int Age;
+public:
+    void IntroduceYourSelf(){
+        cout << "Name - " << Name  << endl;
+        cout << "Company - " << Company  << endl;
+        cout << "Age - " << Age  << endl;
+    }
+    void SetName(string name){
+        Name = name;
+    }
+    void SetCompany(string company){
+        Company = company;
+    }
+    void SetAge(int age ){
+    	//Valid->當false的時候就不會設置
+    	if(age >= 18)
+        Age = age;
+    }
+    string getName(){
+        return Name;
+    }
+    string getCompany(){
+        return Company;
+    }
+    int getAge(){
+        return Age;
+    }
+    Employee(string name,string company,int age){
+        Name = name;
+        Company = company;
+        Age = age;
+    }
+};
+
+int main(int argc, const char * argv[]) {
+    // insert code here...
+    Employee employee = Employee("peter","yuntech",0);
+    employee.IntroduceYourSelf();
+    employee.SetAge(18);
+    cout << employee.getAge() << endl;
+    return 0;
+}
+```
+### 2.抽象的概念？
+- 當你有像很複雜的產品不希望被人知道他複雜的地方
+- 所有繼承了抽象的類都必須實現抽象的方法(虛函數)
+
+```c++
+
+#include <bits/stdc++.h>
+using namespace std;
+
+class iEmployee{
+    virtual void AskPromotion() = 0;
+};
+class Employee:iEmployee{
+private:
+    string Name;
+    string Company;
+    int Age;
+public:
+    void IntroduceYourSelf(){
+        cout << "Name - " << Name  << endl;
+        cout << "Company - " << Company  << endl;
+        cout << "Age - " << Age  << endl;
+    }
+    void SetName(string name){
+        Name = name;
+    }
+    void SetCompany(string company){
+        Company = company;
+    }
+    void SetAge(int age ){
+        //Valid->當false的時候就不會設置
+        if(age >= 18)
+            Age = age;
+    }
+    string getName(){
+        return Name;
+    }
+    string getCompany(){
+        return Company;
+    }
+    int getAge(){
+        return Age;
+    }
+    Employee(string name,string company,int age){
+        Name = name;
+        Company = company;
+        Age = age;
+    }
+
+    void AskPromotion() {
+        if(Age > 30)
+            cout << "You can promote" << Age << endl;
+        else
+            cout << "You can not promote" << Age << endl;
+    }
+};
+
+int main(int argc, const char * argv[]) {
+    // insert code here...
+    Employee employee = Employee("peter","yuntech",18);
+    Employee employee2 = Employee("james","yuntech",40);
+    employee.AskPromotion();
+    employee2.AskPromotion();
+
+    return 0;
+}
+
+```
+### 3.繼承
+- 希望後續的class能擁有其父元素的屬性
+
+```c++
+#include <bits/stdc++.h>
+using namespace std;
+
+class iEmployee{
+    virtual void AskPromotion() = 0;
+};
+class Employee:iEmployee{
+private:
+    string Name;
+    string Company;
+    int Age;
+public:
+    void IntroduceYourSelf(){
+        cout << "Name - " << Name  << endl;
+        cout << "Company - " << Company  << endl;
+        cout << "Age - " << Age  << endl;
+    }
+    void SetName(string name){
+        Name = name;
+    }
+    void SetCompany(string company){
+        Company = company;
+    }
+    void SetAge(int age ){
+        //Valid->當false的時候就不會設置
+        if(age >= 18)
+            Age = age;
+    }
+    string getName(){
+        return Name;
+    }
+    string getCompany(){
+        return Company;
+    }
+    int getAge(){
+        return Age;
+    }
+    Employee(string name,string company,int age){
+        Name = name;
+        Company = company;
+        Age = age;
+    }
+
+    void AskPromotion() {
+        if(Age > 30)
+            cout << "You can promote" << Age << endl;
+        else
+            cout << "You can not promote" << Age << endl;
+    }
+};
+
+class Developer:Employee {
+public:
+    string FavProgrammingLanguage ;
+    Developer(string Name,string Company,int Age,string favProgrammingLanguage)
+    : Employee(Name,Company,Age)
+    {
+        FavProgrammingLanguage = favProgrammingLanguage;
+    }
+    void fixBug(){
+        cout << getName() << " fix " << FavProgrammingLanguage << " problem " << endl;
+    }
+};
+int main(int argc, const char * argv[]) {
+    // insert code here...
+    Developer d = Developer("peter","yuntech",18,"golang");
+    d.fixBug();
+    return 0;
+}
+```
+
+#### 發現問題！
+1. 我們有沒有辦法不要透過getName()來獲得父類別的元素
+ - 解決：使用protected修飾符號
+2. 沒有辦法獲得父類別的所有屬性，包括抽象函數
+ - 解決：繼承時將父類別設為public
+
+```c++
+#include <bits/stdc++.h>
+using namespace std;
+
+class iEmployee{
+    virtual void AskPromotion() = 0;
+};
+class Employee:iEmployee{
+protected:
+    string Name;
+    string Company;
+    int Age;
+public:
+    void IntroduceYourSelf(){
+        cout << "Name - " << Name  << endl;
+        cout << "Company - " << Company  << endl;
+        cout << "Age - " << Age  << endl;
+    }
+    void SetName(string name){
+        Name = name;
+    }
+    void SetCompany(string company){
+        Company = company;
+    }
+    void SetAge(int age ){
+        //Valid->當false的時候就不會設置
+        if(age >= 18)
+            Age = age;
+    }
+    string getName(){
+        return Name;
+    }
+    string getCompany(){
+        return Company;
+    }
+    int getAge(){
+        return Age;
+    }
+    Employee(string name,string company,int age){
+        Name = name;
+        Company = company;
+        Age = age;
+    }
+    void AskPromotion() {
+        if(Age > 30)
+            cout << "You can promote " << Name << endl;
+        else
+            cout << "You can not promote " << Name << endl;
+    }
+};
+
+class Developer:public Employee {
+public:
+    string FavProgrammingLanguage ;
+    Developer(string Name,string Company,int Age,string favProgrammingLanguage)
+    : Employee(Name,Company,Age)
+    {
+        FavProgrammingLanguage = favProgrammingLanguage;
+    }
+    void fixBug(){
+        cout << Name << " fix " << FavProgrammingLanguage << " problem " << endl;
+    }
+};
+int main(int argc, const char * argv[]) {
+    // insert code here...
+    Developer d = Developer("peter","yuntech",18,"golang");
+    d.fixBug();
+    d.AskPromotion();
+    return 0;
+}
+
+```
+
+
+### 4.多態性
+```c++
+#include <bits/stdc++.h>
+using namespace std;
+
+class iEmployee{
+    virtual void AskPromotion() = 0;
+};
+class Employee:iEmployee{
+protected:
+    string Name;
+    string Company;
+    int Age;
+public:
+    void IntroduceYourSelf(){
+        cout << "Name - " << Name  << endl;
+        cout << "Company - " << Company  << endl;
+        cout << "Age - " << Age  << endl;
+    }
+    void SetName(string name){
+        Name = name;
+    }
+    void SetCompany(string company){
+        Company = company;
+    }
+    void SetAge(int age ){
+        //Valid->當false的時候就不會設置
+        if(age >= 18)
+            Age = age;
+    }
+    string getName(){
+        return Name;
+    }
+    string getCompany(){
+        return Company;
+    }
+    int getAge(){
+        return Age;
+    }
+    Employee(string name,string company,int age){
+        Name = name;
+        Company = company;
+        Age = age;
+    }
+    void AskPromotion() {
+        if(Age > 30)
+            cout << "You can promote " << Name << endl;
+        else
+            cout << "You can not promote " << Name << endl;
+    }
+    void Work(){
+        cout << Name << " checking email " << endl;
+    }
+};
+
+class Developer:public Employee {
+public:
+    string FavProgrammingLanguage ;
+    Developer(string Name,string Company,int Age,string favProgrammingLanguage)
+    : Employee(Name,Company,Age)
+    {
+        FavProgrammingLanguage = favProgrammingLanguage;
+    }
+    void fixBug(){
+        cout << Name << " fix " << FavProgrammingLanguage << " problem " << endl;
+    }
+    void Work(){
+        cout << Name << " coding " << endl;
+    }
+};
+
+class Teacher: public Employee{
+public:
+    string Subject;
+    Teacher(string Name,string Company,int Age,string subject)
+    : Employee(Name,Company,Age)
+    {
+        Subject = subject;
+    }
+    void Prepare(){
+        cout << Name << " preparing " << Subject;
+    }
+    void Work(){
+        cout << Name << " tech knowledge " << endl;
+    }
+};
+int main(int argc, const char * argv[]) {
+    // insert code here...
+    Developer d = Developer("peter","yuntech",18,"golang");
+    Teacher t = Teacher("james","yuntech",70,"history");
+    d.Work();
+    t.Work();
+    return 0;
+}
+
+```
+#### 多態性常用方法
+- 直接使用父類別完成子類別的各種方法
+  - 遇到還是使用父類別的方法時，可以使用虛擬函數來解決
+- 為什麼虛擬函數可以解決？
+  - 虛擬函數會去檢查最底層的繼承者有沒有使用虛擬函數，如果有的話就使用
+```c++
+#include <bits/stdc++.h>
+using namespace std;
+
+class iEmployee{
+    virtual void AskPromotion() = 0;
+};
+class Employee:iEmployee{
+protected:
+    string Name;
+    string Company;
+    int Age;
+public:
+    void IntroduceYourSelf(){
+        cout << "Name - " << Name  << endl;
+        cout << "Company - " << Company  << endl;
+        cout << "Age - " << Age  << endl;
+    }
+    void SetName(string name){
+        Name = name;
+    }
+    void SetCompany(string company){
+        Company = company;
+    }
+    void SetAge(int age ){
+        //Valid->當false的時候就不會設置
+        if(age >= 18)
+            Age = age;
+    }
+    string getName(){
+        return Name;
+    }
+    string getCompany(){
+        return Company;
+    }
+    int getAge(){
+        return Age;
+    }
+    Employee(string name,string company,int age){
+        Name = name;
+        Company = company;
+        Age = age;
+    }
+    void AskPromotion() {
+        if(Age > 30)
+            cout << "You can promote " << Name << endl;
+        else
+            cout << "You can not promote " << Name << endl;
+    }
+    virtual void Work(){
+        cout << Name << " checking email " << endl;
+    }
+};
+
+class Developer:public Employee {
+public:
+    string FavProgrammingLanguage ;
+    Developer(string Name,string Company,int Age,string favProgrammingLanguage)
+    : Employee(Name,Company,Age)
+    {
+        FavProgrammingLanguage = favProgrammingLanguage;
+    }
+    void fixBug(){
+        cout << Name << " fix " << FavProgrammingLanguage << " problem " << endl;
+    }
+    void Work(){
+        cout << Name << " coding " << endl;
+    }
+};
+
+class Teacher: public Employee{
+public:
+    string Subject;
+    Teacher(string Name,string Company,int Age,string subject)
+    : Employee(Name,Company,Age)
+    {
+        Subject = subject;
+    }
+    void Prepare(){
+        cout << Name << " preparing " << Subject;
+    }
+    void Work(){
+        cout << Name << " tech knowledge " << endl;
+    }
+};
+int main(int argc, const char * argv[]) {
+    // insert code here...
+    Developer d = Developer("peter","yuntech",18,"golang");
+    Teacher t = Teacher("james","yuntech",70,"history");
+    Employee* e1 = &d;
+    Employee* e2 = &t;
+    e1->Work();
+    e2->Work();
+    return 0;
+}
+```
+
+## Friend類
+- 當我需要可以使用其他類別的private時，直接引入發現因為private而不可訪問
+  - 解決：將要調用的類設為friend class
+```c++
+#include <bits/stdc++.h>
+
+using namespace std;
+
+class Home {
+private:
+    string Name;
+public:
+    Home(string name){
+        Name = name;
+    }
+    void member(){
+        cout << Name << " in home" << endl;
+    }
+    friend class Get;
+};
+
+class Get{
+private:
+    string Name;
+public:
+    Get(string name){
+        Name = name;
+    }
+    void ISHe(Home  h,Get g){
+        if (h.Name == h.Name)
+            cout << "YES" << endl;
+        else
+            cout << "NO" << endl;
+    }
+};
+
+int main(){
+    Home h = Home("peter");
+    h.member();
+    Get g = Get("peter");
+    g.ISHe(h,g);
+}
+```
+
+## 運算子多載
+- 多載運算子的名稱是 operatorx，其中x是下表中顯示的運算子。例如，若要多載加運算子，您可以定義稱為 operator+的函式。
+- 為什麼要運算子多載？
+  - 當成員元素為private時，只要一多就會需要大量get和set相加，使用運算子多載可以避免這種狀況
+- 如何決定運算子參數數量？
+- 使用運算子多載以外需要運算的類別
+
+#### 希望實現n1+n2
+```c++
+#include <bits/stdc++.h>
+using namespace std;
+
+class Number{
+private:
+    int number;
+public:
+    Number(int num){
+        number = num;
+    }
+
+};
+
+int main(){
+    Number n1 = Number(12);
+    Number n2 = Number(10);
+}
+
+```
+##### 解決
+```c++
+#include <bits/stdc++.h>
+using namespace std;
+
+class Number{
+private:
+    int number;
+public:
+    Number(int num){
+        number = num;
+    }
+    Number operator+(Number &n2){
+        return number + n2.number;
+    };
+    int getNumber(){
+        return number;
+    }
+};
+
+int main(){
+    Number n1 = Number(12);
+    Number n2 = Number(10);
+    Number n3 = n1+n2;
+    cout << n3.getNumber() << endl;
+}
+```
+
+## Static和extern
+- static能夠讓指定變數跳脫做用域
+- extern可以讓變數再不同文件傳輸，宣告了extern的變數等同於在這個文件裡面有一個變數可以用，但是這個變數的宣告並不在此，而是有某個 include 了 此文件的人會去做宣告
+
+#### 如果不使用static
+```c++
+#include <bits/stdc++.h>
+using namespace std;
+
+int plusNum(){
+    int a =0;
+    ++a;
+    return a;
+}
+
+int main(){
+    for(int i=0;i<5;i++){
+        cout << plusNum() << endl;
+    }
+}
+
+```
+- 發現a輸出全是1
+  - 這時候將a設為static，a會從1加到5輸出
+```c++
+#include <bits/stdc++.h>
+using namespace std;
+
+int plusNum(){
+    static int a =0;
+    ++a;
+    return a;
+}
+
+int main(){
+    for(int i=0;i<5;i++){
+        cout << plusNum() << endl;
+    }
+}
+```
+
+
+
+## 解構
+- 程式執行完的時候自動作用
+
+```c++
+#include <bits/stdc++.h>
+using namespace std;
+
+
+class Test {
+public:
+    int number;
+    Test(int num){
+       number = num;
+    }
+    ~Test(){
+        cout << "IS END" << endl;
+    }
+    void getNum(){
+        cout << number << endl;
+    }
+};
+int main(){
+    Test t = Test(10);
+    t.getNum();
+    return 0;
+}
+
+----
+10
+IS END
+
+```

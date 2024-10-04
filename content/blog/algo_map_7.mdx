@@ -1,0 +1,169 @@
+---
+title: Algo_7_Saliding Window
+description: 學習算法
+date: 2024-10-1
+tags: ["code","c++","algo"]
+---
+
+# 思想
+
+- 使用雙指針維護窗口大小，大小為`j-i+1`
+- 也可以使用vector或其他datastruct來維護窗口
+
+## Leetcode 643
+
+- 這題就是很標準的窗口題，移動窗口的時候將不要的扣去
+- accumulatie會將指定範圍內的所有值相加
+
+```c++
+class Solution {
+public:
+    double findMaxAverage(vector<int>& nums, int k) {
+        ios::sync_with_stdio(0);
+        cin.tie(0);
+        cout.tie(0);
+        double sum =0;
+        double maxSum =0;
+        sum = accumulate(nums.begin(),nums.begin()+k,0);
+        maxSum = sum;
+        for(int i=k;i<nums.size();i++){
+            sum += nums[i]-nums[i-k];
+            maxSum = max(maxSum,sum);
+        }
+        return maxSum/k;
+    }
+};
+```
+
+## Leetcode 1004
+
+- 雙層的while我都會想成類似窗口的模板，第一個while遍歷，第二個則是用來維護窗口大小
+- 此提的話可以填入k個數字，因此在還有k且滿足條件下可以動k，而縮窗口的時候遇到滿足k條件的也要還原k值
+- 因為縮的窗口會是已經便利過的，也可以理解為backtrack要恢復狀態
+
+```c++
+class Solution {
+public:
+    int longestOnes(vector<int>& nums, int k) {
+        int i =0;
+        int n = nums.size();
+        int start = 0;
+        int width = 0;
+        while(i < n){
+            while(i < n && k < 1 && nums[i] == 0){
+                if(nums[start] == 0) k++;
+                width = max(width,i-start);
+                start++;
+            }
+            if(i < n && k > 0 && nums[i] == 0)k--;
+            i++;
+        }
+        width = max(width,n-start);
+        return width;
+    }
+};
+```
+
+## Leetcode 3
+
+- 使用set的話可以查看是否有填入，沒有的話就將I往前
+- 反回的就是窗口的大小
+
+```c++
+class Solution {
+public:
+    int lengthOfLongestSubstring(string s) {
+        int i=0;int j=0;int ans =0;
+        unordered_set<char> st;
+        while(j < s.size()){
+            while(st.find(s[j]) != st.end()){
+                st.erase(s[i]);
+                i++;
+            }
+            st.insert(s[j]);
+            ans = max(ans,j-i+1);
+            j++;
+        }
+        return ans;
+    }
+};
+```
+
+## Leetcode 424
+
+- 先用map拿到最多出現的字，當大於窗口大小減去出現最多次的字大於k時維護窗口
+
+```c++
+class Solution {
+public:
+    int characterReplacement(string s, int k) {
+        unordered_map<char,int> ump;
+        int i=0;int j=0;int maxl =0;
+        int ans=0;
+        while(j < s.size()){
+            ump[s[j]]++;
+            maxl = max(maxl,ump[s[j]]);
+            if( (j-i+1)-maxl > k){
+                ump[s[i]]--;
+                i++;
+            }
+            ans = max(ans,j-i+1);
+            j++;
+        }
+        return ans;
+    }
+};
+```
+
+## Leetcode 209
+
+- 簡單維護窗口
+
+```c++
+class Solution {
+public:
+    int minSubArrayLen(int target, vector<int>& nums) { 
+        int i =0;int j=0;int ans=INT_MAX;
+        int sum=0;
+        while(j < nums.size()){
+            sum += nums[j];
+            while(sum >= target){
+                sum -= nums[i];
+                ans = min(ans,j-i+1);
+                i++;
+            }
+            j++;
+        }
+        return ans == INT_MAX ? 0 : ans;
+    }
+};
+```
+
+## Leetcode 567
+
+- 先計算當前兩個map是否相同大小，相同就返回
+- 第二個遍歷如果m2在的位置在n1也有出現就減去，當兩者相同時代表s2裏有s1的順序值
+
+```c++
+class Solution {
+public:
+    bool checkInclusion(string s1, string s2) {
+        vector<char> m1(26,0),m2(26,0);
+        int n1 = s1.size();
+        int n2 = s2.size();
+        if(n1 > n2) return false;
+        for(int i=0;i<n1;i++){
+            m1[s1[i]-'a']++;
+            m2[s2[i]-'a']++;
+        }
+        if(m1 == m2) return true;
+        for(int i=n1;i<n2;i++){
+            m2[s2[i]-'a']++;
+            m2[s2[i-n1]-'a']--;
+            if(m1 == m2) return true;
+        }
+
+        return false;
+    }
+};
+```

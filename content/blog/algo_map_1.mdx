@@ -1,0 +1,161 @@
+---
+title: Algo_1_vector
+description: 學習算法
+date: 2024-9-12
+tags: ["code","c++","algo"]
+---
+
+### Leetcode 56
+
+```c++
+#include <bits/stdc++.h>
+
+using namespace std;
+class Solution
+{
+public:
+    vector<vector<int>> merge(vector<vector<int>> &intervals)
+    {
+        sort(intervals.begin(), intervals.end(), [](vector<int> &a, vector<int> &b)
+             { return a[0] < b[0]; });
+
+        vector<vector<int>> megred;
+        vector<int> prev = intervals[0];
+        for (int i = 1; i < intervals.size(); i++)
+        {
+            vector<int> interval = intervals[i];
+            if (interval[0] <= prev[1])
+            {
+                prev[1] = max(prev[1], interval[1]);
+            }
+            else
+            {
+                megred.push_back(prev);
+                prev = interval;
+            }
+        }
+        megred.push_back(prev);
+        return megred;
+    }
+};
+```
+
+### Leetcode 238
+
+```c++
+#include <bits/stdc++.h>
+using namespace std;
+
+class Solution
+{
+public:
+    vector<int> productExceptSelf(vector<int> &nums)
+    {
+        int n = nums.size();
+        vector<int> pre(n);
+        vector<int> suf(n);
+        pre[0] = 1;
+        suf[n - 1] = 1;
+        for (int i = 1; i < n; i++)
+        {
+            pre[i] = pre[i - 1] * nums[i - 1];
+        }
+
+        for (int i = n - 2; i >= 0; i--)
+        {
+            suf[i] = suf[i + 1] * nums[i + 1];
+        }
+        vector<int> ans(n);
+        for (int i = 0; i < n; i++)
+        {
+            ans[i] = pre[i] * suf[i];
+        }
+        return ans;
+    }
+};
+```
+
+### Leetcode 54
+
+```c++
+#include <bits/stdc++.h>
+
+using namespace std;
+class Solution
+{
+public:
+    vector<int> result;
+    int n, m = 0;
+
+    vector<int> spiralOrder(vector<vector<int>> &matrix)
+    {
+        n = matrix.size();
+        m = matrix[0].size();
+        int top = 0, bottom = n - 1;
+        int left = 0, right = m - 1;
+        vector<int> v;
+        while (top <= bottom && left <= right)
+        {
+            for (int i = left; i <= right; i++)
+            {
+                v.push_back(matrix[top][i]);
+            }
+            top++;
+            for (int i = top; i <= bottom; i++)
+            {
+                v.push_back(matrix[i][right]);
+            }
+            right--;
+            if (top <= bottom)
+            {
+                for (int i = right; i >= left; i--)
+                {
+                    v.push_back(matrix[bottom][i]);
+                }
+                bottom--;
+            }
+            if (left <= right)
+            {
+                for (int i = bottom; i >= top; i--)
+                {
+                    v.push_back(matrix[i][left]);
+                }
+                left++;
+            }
+        }
+        return v;
+    }
+};
+
+```
+
+### Leetcode 48
+
+```c++
+#include <bits/stdc++.h>
+
+using namespace std;
+class Solution
+{
+public:
+    void rotate(vector<vector<int>> &matrix)
+    {
+        int n = matrix.size();
+        for (int i = 0; i < n; i++)
+        {
+            for (int j = i + 1; j < n; j++)
+            {
+                swap(matrix[i][j], matrix[j][i]);
+            }
+        }
+
+        for (int i = 0; i < n; i++)
+        {
+            for (int j = 0; j < n / 2; j++)
+            {
+                swap(matrix[i][j], matrix[i][n - j - 1]);
+            }
+        }
+    }
+};
+```

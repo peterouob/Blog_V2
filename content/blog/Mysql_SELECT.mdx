@@ -1,0 +1,782 @@
+---
+title: Mysql
+description: 簡單說明Mysql SELECT語句操作，包含單表或多表
+date: 2023-07-05 09:55:02
+tags: ["code","mysql","base"]
+---
+
+# 資料表TABLE
+
+
+---
+# 單表查詢
+---
+
+### 什麼是數據庫?什麼是數據庫管理系統?什麼是SQL?他們的關係又是什麼?
+
+---
+
+- 數據庫,英文名DataBase,簡稱DB
+
+    儲存數據的倉庫,實際上是文件,這些文件儲存了特定格式的數據
+
+- 數據管理系統,英文名DataBaseManagment,簡稱DBMS
+
+    專門用來管理數據庫中的數據,對數據庫當前數據進行增刪改查
+
+    常見的數據庫管理系統:
+
+    MySQL , Oracle , MS SqlServer , DB2 …
+
+- SQL結構化查詢系統
+
+    程序員編寫SQL然後DBMS負責執行SQL語句,最終完成增刪改查
+
+    SQL是一套標準,能在不同DBMS中使用
+
+- 三者間的關係?
+DBMS—執行 → SQL—操作→DB
+
+### MySQL常用指令
+
+---
+
+1. 退出:exit
+2. 顯示數據庫:show database;
+3. 選擇使用數據庫:use [database name];
+
+4. 創建數據庫:create database [database name];
+
+### 表的理解
+
+---
+
+1. 什麼是表?為什麼使用表存取數據
+    - 數據庫當中以表格的形式表示數據,因為比較直觀
+
+        任何一張表都存在著行和列
+
+        行(row)表示數據/紀錄
+
+        列(column)表示字段
+
+2. 每一個字段都有:字段名,數據類型,約束等屬性
+
+
+
+### 關於SQL分類
+
+---
+
+分為:
+
+1. DQL
+    - 數據查詢語言(凡是帶有select關鍵字的都是查詢語言
+2. DML
+    - 數據操作語言(凡是對表當中的數據進行增刪改都是DML
+
+        DML主要操作得是表的數據不是結構
+
+        insert增
+
+        delete刪
+
+        update改
+
+3. DDL
+    - 數據定義語言(凡是帶有create drop alter都是DDL
+
+        DDL主要操作的是表的結構不是數據
+
+        create增
+
+        drop刪
+
+        alter修改
+
+        ### 和DML不同,DML主要對於表的資料,DDL主要對於表本身
+
+4. TCL
+    - 事務控制語言
+
+        包括:
+
+        1. 事務提交 : commit
+        2. 事務回滾 : rollback
+5. DCL
+    - 是數據控制語言
+
+        例如: 授權grant , 撤銷權限revoke …
+
+
+查看版本號
+
+```sql
+select version()
+```
+
+查看當前使用數據庫
+
+```sql
+select database()
+```
+
+只查詢表結構
+
+```sql
+desc <table-name>
+```
+
+## DQL
+
+---
+
+### 1.簡單查詢
+
+- select 和 from 都是關鍵字
+
+    字段名和表名為標示符
+
+- select後面如果直接跟查詢 字面量/字面值(數據) 而非存在的字段 , 相當於插入這些數據
+
+查詢一個字段
+
+```sql
+select `<字段名>` from <表名>
+```
+
+查詢多個字段
+
+```sql
+select `<字段名>` , `<字段名>` , ... , `<字段名>` from <表名>
+```
+
+查詢所有字段
+
+```sql
+select * from <表名>
+```
+
+這種方式缺點 :
+
+1. 效率低
+2. 可讀性差
+
+爲字段查詢時取別名
+
+```sql
+select <字段名1> as <新字段名> , <字段名2> from <表名>
+也可以省略as
+select <字段名1> <新字段名> from <表名>
+select <字段名1> '新字 段名' from <表名>
+```
+
+顯示的查詢結果字段名1更改為新字段名,不影響原列表
+
+- 在所有的數據庫中,字符串統一使用單引號
+
+查詢時可以對字段進行加減乘除
+
+```sql
+#字段類型為int num 為任一數值
+select <字段> +num from <表名>
+select <字段> -num from <表名>
+select <字段> *num from <表名>
+select <字段> /num from <表名>
+```
+
+### 2.條件查詢
+
+- 不是將所有數據查出,是查詢出符合條件的
+
+```sql
+select
+	`<字段1>` , `<字段2>` , `<字段3>` ...
+from
+	<表名>
+where
+	<條件> ;
+```
+
+- 有拿些條件?
+    1. =  等於
+    2. `<>`或≠ 不等於
+    3. > 大於 , < 小於
+    4. ≥ 大於等於 , ≤ 小於等於
+    5. between … and … 兩個值之間 ,等同於 ≥ and ≤
+        - 使用between … and … 時必須是左小右大
+    6. is null 為空值 , is not null 不為空值
+        - 不能使用 等號 是因為數據庫當中的null代表什麼都沒有 , 並不是一個值
+    7. and 並且 , or 或者 , in 包含(相當於多個or) , not in 不在範圍內
+        - and 和 or 同時出現是否具有優先級問題
+
+            and 優先級比 or高 , 所以會先尋找符合and 前面條件的數據再找後面條件的數據
+
+            如果要避免優先級的話加上括號
+
+            ```sql
+            select *  from emp where sal > 2500 and DEPTNO = 10 or DEPTNO = 20;
+            會先找 sal>2500 再找 deptno = 10 or deptno = 20 的數據
+            select *  from emp where sal > 2500 and (DEPTNO = 10 or DEPTNO = 20);
+            此時 sal > 2500 and (DEPTNO = 10 or DEPTNO = 20) 會當成一個條件來尋找數據
+            ```
+
+        - in不是一個區間 , 而是一個定值
+
+            ```sql
+            select * from  emp where DEPTNO in (10,20);
+            相當於
+            select * from emp where DEPTNO = 10 or DEPTNO = 20;
+            ```
+
+    8. not 可以取非 , 主要用在is或in中
+    9. like 稱為模糊查詢 , 支持 % 或 下滑線 匹配
+        - % , 匹配任一多個字符
+        - 下滑線 , 匹配一個字符
+
+        ```sql
+        #找出名字含有T
+        select * from emp where ename like '%T%'
+        #找出名字以N結尾
+        select * from emp where ename like '%N'
+        #找出名字以A開頭
+        select * from emp where ename like 'A%'
+        #找出第n個字符為s的
+        lowline = 下滑線
+        char = 字符
+        select * from emp where ename like '<lowline><lowline>...<char>%'
+        #找出名字有下滑線的 , \ 為轉譯字符
+        select * from emp where ename like '%\_%'
+        ```
+
+
+### 3.排序
+
+1. 查詢並且排序
+
+    ```sql
+    select `<字段1>`,`<字段2>` ... where <表名> order by `<字段名>`
+    默認為升序(asc)
+    select `<字段1>`,`<字段2>` ... where <表名> order by `<字段名>` desc
+    指定為降序
+    ```
+
+2. 按照`<字段1>`升序排列,如果`<字段1>`相同 按照 `<字段2>`將序排列
+
+    ```sql
+    select ename,sal from emp order by sal , ename desc
+    #sal在前,起主導,只有在sal相等的時候,才會考慮起用ename的排序
+    ```
+
+3. 根據字段位置排序
+
+    ```sql
+    select ename,sal from emp order by 2
+    #此時依照查詢結果的第二列進行排序
+    ```
+
+    - 不建議在開發中這樣寫,因為不健壯
+
+        因為列的順序很容易改變,列順序修改後,2就廢了
+
+4. 關鍵字順序不能變
+
+    ```sql
+    select
+    	...
+    where
+    	...
+    order by
+    	...
+    ```
+
+    - 以上語句執行順序必須掌握:
+        1. from
+        2. where
+        3. select
+        4. order by ( 排序總是在最後執行 )
+
+### 4.數據處理函數
+
+- 數據處理函數又被稱為單行處理函數
+
+    單行處理函數特點→一個輸入對應一個輸出(類似直譯
+
+- 常見單行處理函數
+    1. lower 轉換小寫 , upper 轉換大寫
+
+        ```sql
+        select lower(`<字段名>`) from  <表名>
+        select upper(`<字段名>`) from  <表名>
+        ```
+
+    2. substr 取子串( substr(被截取的字符串 , 起始下標 , 截取的長度) )
+        - 起始下標從1開始
+
+        ```sql
+        select substr(<字段名>,起始位置,結束位置) from <表名>
+        ```
+
+    3. concat 進行字符串拼接
+
+        ```sql
+        select concat(`<字段1>`,`<字段2>`) from <表名>
+        ```
+
+    4. length 獲得字符串長度
+
+        ```sql
+        select length(`<字段名>`) fron <表名>
+        ```
+
+        - 首字母小寫
+    5. trim 去除空格
+
+        ```sql
+        select concat(lower(substr(ename,1,1)),substr(ename,2,length(ename)-1)) as result from emp
+        ```
+
+        ```sql
+        select * from emp where ENAME = trim('   AARON  ')
+        如果沒有trim的話找不到數據,因為沒有'  AARON  ' 只有 'AARON'
+        ```
+
+    6. round 四捨五入
+
+        ```sql
+        #num代表任一 , 0代表保留整數 , 1代表保留小數點後第一位 , -1代表保留整數前一位
+        select round(num,0) from <表名>
+        ```
+
+    7. rand 生成隨機數
+
+        ```sql
+        #產生100以內隨機數
+        select rand()*100 from <表名>
+
+        #可以搭配round來取整數
+        select round(rand()*100,0) from <表名>
+        ```
+
+    8. ifnull 可以將null轉換成一個具體值
+        - 在所有數據庫當中,只要有null參與的數學運算結果都會是null , 為了避免需使用ifnull函數
+        - ifnull用法 : ifnull(數據,被當作的值),如果數據為null,把這個數據結構當成 被當作的值
+        - 如果使用ifNull進行運算必須在ifNull的外面
+
+        ```sql
+        select ename, (sal + ifnull(comm,0))*12 as yearsal from emp
+        當comm為null時會被當成0
+        #使用ifNull運算
+        select name from customer where ifNull(referee_id,0) != 2
+        ```
+
+    9. case .. when .. then .. when .. then .. else .. end
+
+        ```sql
+        當員工工作崗位為manager時sal上調10% , 為salesman上調20% , 其他不變
+        select
+        	ename,
+        	sal as old sal
+        	(case job when 'MANAGER' then sal * 1.1 when 'SALESMAN' then sal * 1.5 else sal end) as newsal
+        from
+        	emp
+        ```
+
+
+### 5.分組函數(多行處理函數)
+
+- 分組函數必須先分組然後再用,沒分組的話默認整張表為一組
+    1. count計數
+    2. sum
+    3. avg
+    4. max
+    5. min
+
+分組函數使用注意哪些 :
+
+1. 分組函數自動忽略null , 不需提前處理null
+2. count(*) 和 count(`<具體字段>`)差別為何？
+    - count(*)統計表當中的總行數 , 只要有一行數據count++
+
+        因為每一行紀錄不可能都為NULL , 一行數據有一列不為NULL , 則該行數據就是有效的
+
+    - count(`<具體字段>`)表示統計該字段下所有不為null的元素的總數
+3. 分組函數不能夠直接使用在where子句中
+    - 由底下的執行順序可以知道 , 會先where再進行分組 , 所以沒辦法使用分組函數
+4. 所有的分組函數可以合起來一起用
+5. 為什麼where不行但select可以
+    - 因為select在group by執行後才會執行 , 所以其實有分組不過是使用默認下的狀態
+6. avg函數特殊用法
+    - 在avg函數中新增判斷 , 可以算出 符合判斷的值 / 全部的值
+
+        ```sql
+        算出取消率,取到小數點後2位
+        取消率為 非完成的 / 全部的值
+        select round(avg(Status != 'complete'),2)
+        ```
+
+
+### 6.分組查詢
+
+1. 怎麼使用分組查詢
+
+    ```sql
+    select
+    	  ...
+    from
+    		...
+    group by
+    		...
+    ```
+
+2. 將之前的關鍵字結合 , 來看下處理順序
+
+    ```sql
+    select
+    		...
+    from
+    		...
+    where
+    		...
+    group by
+    		...
+    order by
+    		...
+    #執行順序為 from > where > group by > select > order by
+    ```
+
+3. 找出每個崗位的工資合
+
+    思路 ：按照工作崗位分組 , 再計算和
+
+    ```sql
+    select job , sum(sal) from emp group by job
+    /*
+    1.先從emp表中查詢數據
+    2.根據job進行分組
+    3.對每一組數據進行sum(sal)
+    */
+    ```
+
+4. 在一條select語句中 , 如果有group  by語句的話 , select 後面只能跟分組的字段以及分組函數
+5. 找出 “ 每個部門 , 不同工作崗位 ” 的最高薪資
+    - 技巧 : 兩個字段聯合成一個字段來看(兩個字段聯合分組)
+
+    ```sql
+    select deptno , max(sal) from emp group by deptno , job
+    ```
+
+6. 使用having可以對分完組後的數據進一步過濾
+
+    having不能單獨使用 , 也不能代替where , , 必須和group by 聯合使用
+
+    - 找出每個部門的最大薪資 , 並且薪資要大於3000
+
+    ```sql
+    select deptno , max(sal) from emp group by  deptno having max(sal) > 3000
+    ```
+
+    但是這種方法的效率會比較低 , 因此改善成先找出哪些大於3000再對他們進行分組
+
+    ```sql
+    select DEPTNO , max(SAL) from emp where sal > 3000 group by DEPTNO
+    ```
+
+    - 優化策略 ：where和having , 優先選擇where , 除非沒辦法才用having
+7. where沒辦法的案例
+
+    找出每個部門平均薪資 , 要求顯示平均薪資高於2500
+
+    ```sql
+    select DEPTNO , avg(sal) from emp group by DEPTNO having avg(sal) > 2500
+    #沒辦法使用where過濾是因為avg屬於分組函數，where沒辦法使用分組函數(執行優先順序)
+    ```
+
+8. 單表的執行順序
+
+    ```sql
+    select
+    		...
+    from
+    		...
+    where
+    		...
+    group
+    		...
+    having
+    		...
+    order by
+    		...
+    #順序 from > where > group by > select > having > order by
+    ```
+
+    1. 從某張表中查詢數據
+    2. 經過where條件篩選出有價值的數據
+    3. 對這些數據進行分組
+    4. 分組之後可以使用having繼續篩選
+    5. select查詢出來 , 最後order by 再排序輸出
+
+# 多表查詢
+
+---
+
+### 1.去除重複紀錄
+
+- 原表數據不會被修改 , 只是查詢結果去除重複內容 , 使用distinct關鍵字(只能出現在字段前面
+
+    distinct出現在多個字段前 , 表示多個字段聯合起來去除重複內容
+
+
+### 2.連接查詢(重要)
+
+1. emp表和dept表聯合起來查詢數據 , 從emp表取員工名字 , 從dept表中取部門名字
+
+    這種跨表查詢 , 多張表聯合起來查詢數據 , 被稱為連接查詢
+
+2. 連結查詢的分類 ?
+
+    SQL92 : 1992年出現的語法
+
+    SQL99 : 1999年出現的語法
+
+    根據表連接的方式分類
+
+    - 內連接
+
+              等值連接
+
+        非等值連接
+
+        自連接
+
+    - 外連接
+
+              左外連接(左連接)
+
+        右外連接(右連接)
+
+    - 全連接
+3. 當兩張表進行查詢時 , 沒有任何條件的限制會發生什麼現象 ?
+    - 案例 : 查詢每個員工所在的部門名稱？
+
+        ```sql
+        #兩張表連接沒有任何條件限制
+        select ename,dname from  emp,dept
+        查詢結果為36條
+        ```
+
+        當兩張表進行連接查詢 , 沒有任何條件限制的情況下 , 最終查詢出來的條數是兩張表數的乘積 , 這種現象被稱為 笛卡爾積現象
+
+4. 如何避免迪卡爾基現象
+    - 再進行查詢時增加條件
+
+        ```sql
+        #使用where增加查詢條件
+        select ename,dname from  emp,dept where emp.DEPTNO = dept.DEPTNO
+        查詢結果為9條
+        ```
+
+        最終查詢條數為9條 , 但在查詢過程中還是進行了36次的匹配查詢 , 只不過進行4選1篩選
+
+        ```sql
+        #使用表起別名能夠增加效率
+        select e.ename , d.dname from emp e , dept d where e.DEPTNO = d.DEPTNO //SQL92
+
+        ```
+
+        藉由迪卡爾積現象可以知道 , 表連接次數越多效率越低 , 勁量避免表的連接次數
+
+5. 內連接等值連接
+    - 案例:查詢每個員工所在部門名稱 , 顯示員工名和部門名
+
+        ```sql
+        #SQL92
+        select e.ename d.dname from emp e,dept d where e.deptno = e.deptno
+        SQL92缺點:結構不清,表的連接條件和後期進一步篩選,都放在where後面
+
+        #SQL99
+        select e.name d.name from emp e join dept d on e.deptno = d.deptno
+        SQL99優點:表連結的條件是獨立的,連接後如果要進一步篩選,再往後添加where
+
+        SQL99語法:
+        	select
+        		...
+        	from
+        		a
+        	(inner) join
+        		b
+        	on
+        		a和b的條件
+        	where
+        		篩選條件
+        ```
+
+        1. inner join中的inner可省略,但有inner更好分辨為內連接
+        2. 因為條件相等所以叫做等值連接
+6. 內連接非等值連接
+    - 案例 : 找出每個員工薪資等級 , 要求顯示員工名 , 薪資 ,薪資等級
+
+        ```sql
+        select e.ename , e.sal , s.grade from emp e join salgrade s on e.sal between s.LOSAL and s.HISAL
+        ```
+
+        條件不是等量關係稱為非等值連接
+
+7. 內連接之自連接
+    - 案例 : 找出員工的名字和他的上級領導
+
+        ```sql
+        select a.ename as '員工名', b.ename as '領導名' from emp a join emp b on a.MGR = b.EMPNO
+        #員工的領導編號 = 領導的員工編號 ->在on的地方做判斷
+        ```
+
+        技巧 : 將一張表看成兩張表 , 表a代表的是員工 , 表b代表的是領導
+
+    - 內連接特點 : 完全能夠匹配上這個條件(on後面的條件)的數據查詢出來
+
+        內連接查詢兩張表A , B不存在主次關係 , 匹配上就查且顯示 , 沒有就不查也不顯示
+
+8. 外連接
+    - 外連接能夠查詢出不符合條件的值 , 也就是能夠查到沒有對應到on條件的數據
+    - 外連接的查詢結果條數一定≥內連接的查詢結果條數
+
+    ```sql
+    #右外連接或稱為右連接
+    select e.ename ,d.dname from emp e right join dept d on e.DEPTNO = d.DEPTNO
+    #左外連接或稱為左連接
+    select e.ename ,d.dname from dept d left join emp e on  e.DEPTNO = d.DEPTNO
+
+    #任何一個右連接都有左連接的寫法,左連接有都右連接的寫法
+    ```
+
+    - 這段sql語法屬於右外連結 , 其中的right或left代表什麼呢？
+
+        增加right/left表示將join右邊/左邊的表看成主表 , 也就是說會先查dept再查emp表 , 因此dept表上面的數據會被全部查出來(不存在null) , 而emp表上如果有不符合條件的數據則會變成null並顯示
+
+    - 在外連接查詢兩張表A , B存在主次關係 , 也就是主的那張表不論條件如何都會查並且顯示 , 次的那張表只會查和顯示符合條件(on)的數據
+    - 外連接的join前面存在outer(可以省略) , 類似內連接的(inner) , 寫的目的是增加可讀性
+
+
+        案例 : 查詢每個員工的上級領導 , 要求顯示所有員工的名字和領導名
+
+        ```sql
+        select a.ename as '員工名' , b.ename as '領導名' from emp a left join emp b on a.MGR = b.EMPNO
+        ```
+
+9. 多張表連接
+    - 一條SQL中內連接和外連接可以混合
+    - 語法 :
+
+        ```sql
+        select
+        	...
+        from
+        	a
+        join
+        	b
+        on
+        	a和b的條件
+        join
+        	c
+        on
+        	a和c的條件
+        right join
+        	d
+        on
+        	a和d的條件
+        ```
+
+    - 案例 : 找出每個員工的部門名稱和薪資等級 , 要求顯示員工名 , 部門名 , 薪資 , 薪資等級
+
+        ```sql
+        select e.ename , d.dname , e.sal , s.GRADE from emp e join dept d on e.DEPTNO = d.DEPTNO join salgrade s on e.SAL between s.LOSAL and s.HISAL
+        ```
+
+    - 案例 : 找出每個員工的部門名稱 , 薪資等級和上級領導 , 要求顯示員工名 , 領導名 , 部門名 , 薪資 , 薪資等級
+
+        ```sql
+        select a.ename as '員工名', b.ename as '領導名' , d.dname , a.sal ,s.grade from emp a join dept d on a.DEPTNO = d.DEPTNO join salgrade s on a.sal between s.LOSAL and s.HISAL left join emp b on a.MGR = b.EMPNO
+        ```
+
+10. 子查詢
+    - select語句嵌套select語句 , 被嵌套的select語句稱為子查詢
+    - 思路中先查得當子句
+    - 子查詢可以出現在哪 ?
+
+        ```sql
+        select
+        	...(select).
+        from
+        	...(select).
+        where
+        	...(select).
+        ```
+
+    1. where子句中的子查詢
+        - 案例 : 找出比最低工資高的員工姓名和工資
+
+            ```sql
+            select ename , sal from emp where sal > (select min(sal) from emp)
+            ```
+
+            先找子查詢(括號裡面)再找非子查詢的
+
+    2. from子句中的子查詢
+        - 技巧 : from後面的子查詢 , 可以將子查詢的查詢結果當作一張臨時表
+        - 案例 : 找出每個崗位的平均工資的薪資等級
+
+            思路 :
+
+            1. 找出每個崗位的平均工資
+            2. 連接工資等級表查看平均工資等級 ( 平均工資必須取別名 , 因為有用到分組函數 )
+
+            ```sql
+            select e.* , s.grade from (select job , avg(sal) avgsal from emp group by job) e join salgrade s on e.avgsal between s.LOSAL and s.HISAL
+            ```
+
+    3. select子句中的子查詢 (了解即可)
+        - 這種子查詢只能一次返回一條數據 , 多於就報錯
+        - 案例 : 找出每個員工的部門名稱 , 要求顯示員工名 , 部門名
+            - 子查詢可以直接當成select查詢的數據
+
+            ```sql
+            select e.ename, (select d.dname from dept d where e.DEPTNO = d.DEPTNO) as '部門名' from emp e
+            ```
+
+11. union合併查詢結果集
+    - 案例 : 查詢工作崗位事MANAGER和SALSMAN的員工
+
+        ```sql
+        select ename from emp where job = 'MANAGER'
+        union
+        select ename from emp where job = 'SALESMAN'
+        ```
+
+    - union的優點 , 進行表連接時 , 避免迪卡爾積現象發生 , 將匹配次數從乘法改變成了加法
+    - union注意事項 :
+        1. union在進行合併結果及的時候 , 要求兩個結果集的列數要相同
+        2. MySQL中 , 列的數據類型可以不一樣 , 但oracle語法裡面列的數據類型如果不一致會報錯
+12. limit
+    - limit會將查詢結果集的一部分取出 , 通常用在分頁查詢當中
+    - 分頁的目的是提高用戶體驗 , 因為一次全部顯示會導致用戶體驗差
+    - limit語法 :
+        1. 完整用法 : limit startIndex , length
+
+            startIndex為起始下標(從0開始) , length為要查詢多少條數目
+
+        2. 簡短用法 : limit n → 取前n項
+        3. 注意 : limit 在order by 之後執行 !!!
+            - 案例 : 取出工資排名在[3-5]名的員工
+
+                ```sql
+                select ename ,sal from emp order by sal desc limit 2,3
+                #2代起始位置,也就是第3條數據
+                #3代表總共查詢三個數 (3,4,5名)
+                ```
+
+        4. 分頁
+            - 每一頁顯示pageSize條紀錄 , 第pageNum頁 : limit ? , ?
+
+                limit  (pageNum -1)*pageSize , pageSize
+
+13. 關於DQL總結

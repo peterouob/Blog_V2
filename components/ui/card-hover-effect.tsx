@@ -3,60 +3,39 @@ import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { useState } from "react";
 
-export const HoverEffect = ({
-  items,
-  className,
-}: {
-  items: {
-    title: string;
-    description: string;
-    link: string;
-  }[];
-  className?: string;
-}) => {
-  let [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+interface HoverEffectProps {
+  slug: string,
+  title: string,
+  description?:string,
+  date: string,
+  tags?:Array<string>,
+  className?:string
+}
+
+export const HoverEffect = ({slug,title,description,date,tags,className} : HoverEffectProps) => {
+  let [hoveredIndex, setHoveredIndex] = useState<string | null>(null);
 
   return (
     <div
       className={cn(
-        "lg:grid hidden  lg:grid-cols-3  py-6 overflow-y-auto ",
+        "lg:grid hidden lg:grid-cols-1 rounded-2xl shadow-none p-4 overflow-y-auto transition-shadow duration-300 cursor-pointer hover:shadow-lg hover:shadow-gray-400",
         className
       )}
     >
-      {items.map((item, idx) => (
-        <Link
-          href={item?.link}
-          key={item?.link}
+      <Link
+          href={slug}
+          key={slug}
           className="relative group  block p-2 h-full w-full"
-          onMouseEnter={() => setHoveredIndex(idx)}
+          onMouseEnter={() => setHoveredIndex(slug)}
           onMouseLeave={() => setHoveredIndex(null)}
-        >
-          <AnimatePresence>
-            {hoveredIndex === idx && (
-              <motion.span
-                className="absolute inset-0 h-full w-full bg-zinc-400/10 dark:bg-slate-600/10block  rounded-3xl"
-                layoutId="hoverBackground"
-                initial={{ opacity: 0 }}
-                animate={{
-                  opacity: 1,
-                  transition: { duration: 0.15 },
-                }}
-                exit={{
-                  opacity: 0,
-                  transition: { duration: 0.15, delay: 0.2 },
-                }}
-              />
-            )}
-          </AnimatePresence>
-          <Card>
-            <CardTitle>{item.title}</CardTitle>
-            <CardDescription>{item.description}</CardDescription>
-          </Card>
-        </Link>
-      ))}
-    </div>
+      >
 
-    
+        <Card>
+          <CardTitle>{title}</CardTitle>
+          <CardDescription>{description}</CardDescription>
+        </Card>
+      </Link>
+    </div>
   );
 };
 
@@ -70,7 +49,7 @@ export const Card = ({
   return (
     <div
       className={cn(
-        "rounded-2xl h-full w-full p-4 overflow-hidden bg-black/60 dark:bg-zinc-400/4 shadow-lg " +
+        "rounded-2xl h-full w-full p-10  overflow-hidden bg-black/60 dark:bg-zinc-400/4 shadow-lg " +
           "border border-transparent dark:border-white/[0.2] group-hover:border-slate-700 relative z-20",
         className
       )}
@@ -89,7 +68,7 @@ export const CardTitle = ({
   children: React.ReactNode;
 }) => {
   return (
-    <h4 className={cn("text-zinc-100 font-bold tracking-wide mt-4 text-2xl", className)}>
+    <h4 className={cn("text-zinc-100 font-bold tracking-wide mt-4 text-2xl w-full ", className)}>
       {children}
     </h4>
   );
@@ -104,7 +83,7 @@ export const CardDescription = ({
   return (
     <p
       className={cn(
-        "mt-8 text-zinc-400 tracking-wide leading-relaxed text-sm ",
+        "mt-8 text-zinc-400 tracking-wide leading-relaxed text-md ",
         className
       )}
     >

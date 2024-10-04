@@ -1,0 +1,327 @@
+---
+title: 使用RUST編寫OS(3)-VGA
+description: 學習RUST同時學習OS
+date: 2024-6-28
+tags: ["rust","code","os"]
+---
+
+## VGA字符模式
+
+### VGA字符緩衝區
+
+| Bit(s) | Value             |
+|--------|-------------------|
+| 0-7    | 	ASCII code point |
+| 8-11   | Foreground color  |
+ | 12-14  | Background color  |
+| 15     | Bik               |
+
+- 要修改VGA字符緩衝區，可以投過memory-mapped IO 的方式讀取或寫入`0xb8000` 這個位址
+
+### 包裝到RUST模塊
+1. 新增名為vga_buffer.rs
+2. 在入口區塊use這個mod
+
+## 枚舉顏色
+- 使用rust中的enum來枚舉這些顏色以方便操作
+- 使用 `#[allow(dead_code)]` 可以避免編譯器對未使用變量產生錯誤
+- 使用derive讓他們使用多個trait，以遵循複製語意(Copy trait)，也可以讓他們被比較或打印
+- 使用 `#[repr(u8)]` 讓其中的元素都能固定以u8的形式儲存
+```rust
+#[allow(dead_code)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+pub enum Color {
+    Black = 0,
+    Blue = 1,
+    Green = 2,
+    Cyan = 3,
+    Red = 4,
+    Magenta = 5,
+    Brown = 6,
+    LightGray = 7,
+    DarkGray = 8,
+    LightBlue = 9,
+    LightGreen = 10,
+    LightCyan = 11,
+    LightRed = 12,
+    Pink = 13,
+    Yellow = 14,
+    White = 15,
+}
+```
+- 為了描述包含前景色或背景色，基於u8創建一個新類型
+- 確保和先前的枚舉有相同內存佈局(u8)，因此添加 `#[repr(transparent)]` 標記
+```rust
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+struct ColorCode(u8);
+
+impl ColorCode {
+    fn new(foreground: Color, background: Color) -> ColorCode {
+        ColorCode((background as u8) << 4 | (foreground as u8))
+    }
+}
+```
+
+## 字符緩衝區
+
+- 使用 `#[repr(C)]` 標記以確保和照C語言約定的順序佈局他的成員變量，確保能映射到正確的內存片段
+- 對Buffer一樣使用 `#[repr(transparent}]` 來確保有相同的內存
+- 在Buffer這個struct中的chars成員類型皆為 `ScreenChar的二維陣列`
+```rust
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(C)]
+struct ScreenChar {
+    ascii_character: u8,
+    color_code: ColorCode,
+}
+
+const BUFFER_HEIGHT: usize = 25;
+const BUFFER_WIDTH: usize = 80;
+
+#[repr(transparent)]
+struct Buffer {
+    chars: [[ScreenChar; BUFFER_WIDTH]; BUFFER_HEIGHT],
+}
+```
+
+## 打印字符
+- 創建Writer類型，以便將字符寫在屏幕的最後一行，並在寫滿或遇到`\n`時將字符向上移位
+### 創建Writer類型
+
+- column_position 追蹤光標在最後一行的位址
+- color_code 決定了字符的前景和背景顏色
+- buffer 則是顯示宣告了這個變數的生命週期(告訴編譯器這個變數何時有效)，宣告為static時，代表只在這個程序運行期間有效，
+```rust
+pub struct Writer {
+    column_position: usize,
+    color_code: ColorCode,
+    buffer: &'static mut Buffer,
+}
+```
+- 我們使用match來分辨接收到的字串，如果為 `\n` 就會換行
+```rust
+impl Writer {
+    pub fn write_byte(&mut self, byte: u8) {
+        match byte {
+            b'\n' => self.new_line(),
+            byte => {
+                if self.column_position >= BUFFER_WIDTH {
+                    self.new_line();
+                }
+
+                let row = BUFFER_HEIGHT - 1;
+                let col = self.column_position;
+
+                let color_code = self.color_code;
+                self.buffer.chars[row][col] = ScreenChar {
+                    ascii_character: byte,
+                    color_code,
+                };
+                self.column_position += 1;
+            }
+        }
+    }
+
+    fn new_line(&mut self) {/* TODO */}
+}
+```
+#### 避免易失操作
+- 因為我們對於buffer的操作只有寫入而沒有讀出，此時編譯器會不知道我們在操作VGA緩衝區的內存，因此會忽略這些她認為沒有必要的操作
+
+##### 更改Buffer
+- `Volatile<>` 類型為一個泛型，確保不會因為通過普通的寫入操作，意外寫入數據
+```rust
+use volatile::Volatile;
+
+struct Buffer {
+    chars: [[Volatile<ScreenChar>; BUFFER_WIDTH]; BUFFER_HEIGHT],
+}
+```
+##### 修改writer方法
+- 使用writer來避免編譯器不再優化這個寫入操作
+```rust
+impl Writer {
+    pub fn write_byte(&mut self, byte: u8) {
+        match byte {
+            b'\n' => self.new_line(),
+            byte => {
+                ...
+
+                self.buffer.chars[row][col].write(ScreenChar {
+                    ascii_character: byte,
+                    color_code: color_code,
+                });
+                ...
+            }
+        }
+    }
+    ...
+}
+```
+
+## 格式化宏
+```rust
+use core::fmt;
+
+impl fmt::Write for Writer {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.write_string(s);
+        Ok(())
+    }
+}
+
+
+pub fn print_something() {
+    use core::fmt::Write;
+    let mut writer = Writer {
+        column_position: 0,
+        color_code: ColorCode::new(Color::Yellow, Color::Black),
+        buffer: unsafe { &mut *(0xb8000 as *mut Buffer) },
+    };
+
+    writer.write_byte(b'H');
+    writer.write_string("ello! ");
+    write!(writer, "The numbers are {} and {}", 42, 1.0/3.0).unwrap();
+}
+```
+
+## 換行
+- 將最頂上的一行刪除後，在最後一行的起始開始打印
+- 遍歷屏幕上的每個字符，把每個字符移動到他上方一行的地方
+- `..` 符號是區間標號，為左閉右開，因此不包含上界
+- 最外層的枚舉省略了0，因為這一行應該被移出屏幕，即他將被下一行覆蓋
+```rust
+impl Writer {
+    fn new_line(&mut self) {
+        for row in 1..BUFFER_HEIGHT {
+            for col in 0..BUFFER_WIDTH {
+                let character = self.buffer.chars[row][col].read();
+                self.buffer.chars[row - 1][col].write(character);
+            }
+        }
+        self.clear_row(BUFFER_HEIGHT - 1);
+        self.column_position = 0;
+    }
+
+    fn clear_row(&mut self, row: usize) {/* TODO */}
+}
+```
+
+### 清空
+- 通過向緩衝區寫入空格字符，可以清空一整行的字符位置
+```rust
+impl Writer {
+    fn clear_row(&mut self, row: usize) {
+        let blank = ScreenChar {
+            ascii_character: b' ',
+            color_code: self.color_code,
+        };
+        for col in 0..BUFFER_WIDTH {
+            self.buffer.chars[row][col].write(blank);
+        }
+    }
+}
+```
+
+## 全局接口
+- 在編寫其他模塊時，我們希望能隨時擁有writer實例，便能使用他的方法
+
+### 使用延遲初始化
+- 在一般引用static時，rust要求我們使用一個稱為常量求值器(const evaluator)的組建，以便編譯時的初始化。這個問題會需要使用常函數(const function)解決，不過常函數存在不穩定性外，編譯時也沒有辦法直接轉為裸指針變量
+- 使用 `lazy_static!` 宏，定義了延遲初始化(lazily initialized)的靜態變量，這個變量將在第一次引用做計算，而非編譯時計算
+
+#### 引入包
+- Cargo.toml
+```toml
+[dependencies.lazy_static]
+version = "1.0"
+features = ["spin_no_std"]
+```
+#### 定義WRITER
+
+```rust
+use lazy_static::lazy_static;
+
+lazy_static! {
+    pub static ref WRITER: Writer = Writer {
+        column_position: 0,
+        color_code: ColorCode::new(Color::Yellow, Color::Black),
+        buffer: unsafe { &mut *(0xb8000 as *mut Buffer) },
+    };
+}
+```
+##### 使用 spinlock 定義可變性
+- 目前我們宣告的WRITER為不可變變量，因此不可使用，如果要的話需要使用可變靜態(mutable static)的變量，但會讓所有變量變為`unsafe`，容易導致數據競爭或其他問題
+- 使用 `static mut` 極為不被贊成，改用 `RefCall` 或 `UnsafeCall` 等類型提供的內部可變性(interior mutability)，但都不滿足Sync約束，所以不能在靜態變量中使用它們
+- 因為我們內部代碼還沒有線程的概念，因此沒辦法使用一般的 `Mutex`
+- 使用自旋鎖(spinLock)實現基本互斥鎖功能，自旋鎖不會調用阻塞邏輯，而是會有一個小的無限循環來嘗試獲得鎖，也因此會不斷佔用CPU直到釋放
+
+---
+
+- Cargo.toml
+```toml
+[dependencies]
+spin = "0.5.2" 
+```
+- 為WRITER實現內部可變性
+```rust
+use spin::Mutex;
+...
+lazy_static! {
+    pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
+        column_position: 0,
+        color_code: ColorCode::new(Color::Yellow, Color::Black),
+        buffer: unsafe { &mut *(0xb8000 as *mut Buffer) },
+    });
+} 
+```
+
+## 安全性
+- 現在我們的代碼只剩一個unsafe指向 `0xb80000` 的buffer類型引用，我們需要確保所有的動作都是安全的，避免因為Rust訪問每個數組檢查邊界，而不經意越界或到緩衝區之外
+
+#### 標準庫 `ptintln!` 宏的定義
+- 使用`#[marco_export]`標示讓整個包不再基於`std::macros::println`導入，而是使用`use std::println`，因為它讓整個包(crate)和基於他的包都能訪問，而不僅限於定義的模塊
+- 宏的定義很像`match`語句有多個分支
+  - `()=>` 代表不傳入參數
+  - `($($arg:tt)*)=>` 代表接收任何參數，並調用`print!`宏擴展
+  - `tt`為宏中的特數類型，他的底層邏輯會將傳入的任何參數遞歸處理
+
+##### tt撕咬機
+- `標記樹撕咬機` (TT muncher) 是一種遞歸宏，其工作機制有賴於對輸入的順次、逐步處理 (incrementally processing) 。處理過程的每一步中，它都將匹配並移除（“撕咬”掉）輸入頭部 (start) 的一列標記 (tokens)，得到一些中間結果，然後再遞歸地處理輸入剩下的尾部。
+- 標記樹撕咬機僅有的限制，也是整個宏系統的局限
+  - 只能匹配 `marco_rules!`捕獲到的字面值和語法結構
+  - 無法匹配不成對的標記組(unbalanced group)
+
+#### 標準庫 `ptint!` 宏的定義
+- `$crate` 變量將在std包外被解析為std包，保證整個宏都能調用
+- `format_args!`宏將傳入的參數搭建為 `fmt::Arguments`類型，這個類型將被傳入`_print`函數
+```rust
+#[macro_export]
+macro_rules! print {
+    ($($arg:tt)*) => ($crate::io::_print(format_args!($($arg)*)));
+}
+```
+
+### 重新定義`println!/print!`宏
+- 像標準庫一樣添加 `#[marco_export]`標記，以便在任何地方使用，不過這也會佔用根命名空間(root namespace)，應此我們應該使用`use crate::println`而非`crate::vga_buffer::println`
+- 因為我們`_print`函數為公有的，但考慮到內部有私有的細節，因此添加 `#[doc(hidden)]` 可以讓我們的函數防止他生成在文檔(不被外部訪問看如何實現)
+```rust
+#[macro_export]
+macro_rules! print {
+    ($($arg:tt)*) => ($crate::vga_buffer::_print(format_args!($($arg)*)));
+}
+
+#[macro_export]
+macro_rules! println {
+    () => ($crate::print!("\n"));
+    ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
+}
+
+#[doc(hidden)]
+pub fn _print(args: fmt::Arguments) {
+    use core::fmt::Write;
+    WRITER.lock().write_fmt(args).unwrap();
+}
+```

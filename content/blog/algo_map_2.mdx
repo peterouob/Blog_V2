@@ -1,0 +1,102 @@
+---
+title: Algo_2_hash
+description: 學習算法
+date: 2024-9-18
+tags: ["code","c++","algo"]
+---
+
+## Leetcode 36
+
+```c++
+#include <bits/stdc++.h>
+
+using namespace std;
+class Solution
+{
+public:
+    bool isValidSudoku(vector<vector<char>> &board)
+    {
+        unordered_set<char> rows[9];
+        unordered_set<char> cols[9];
+        unordered_set<char> boxs[9];
+        for (int i = 0; i < 9; i++)
+        {
+            for (int j = 0; j < 9; j++)
+            {
+                if (board[i][j] == '.')
+                    continue;
+                int boxIndex = (i / 3) * 3 + j / 3;
+                /*
+                9*9 -> 3*3
+                [0,0] [0,3] [0,6] / 3
+                [3,0] [3,3] [3,6] / 3
+                [6,0] [6,3] [6,6] / 3
+                 */
+                if (rows[i].count(board[i][j]) || cols[j].count(board[i][j]) || boxs[boxIndex].count(board[i][j]))
+                {
+                    return false;
+                }
+                rows[i].insert(board[i][j]);
+                cols[j].insert(board[i][j]);
+                boxs[boxIndex].insert(board[i][j]);
+            }
+        }
+        return true;
+    }
+};
+```
+
+## Leetcode 49
+
+```c++
+#include <bits/stdc++.h>
+using namespace std;
+class Solution
+{
+public:
+    vector<vector<string>> groupAnagrams(vector<string> &strs)
+    {
+        unordered_map<string, vector<string>> mp;
+        mp.clear();
+        for (auto s : strs)
+        {
+            auto word = s;
+            sort(word.begin(), word.end());
+            mp[word].push_back(s);
+        }
+        vector<vector<string>> r;
+        for(auto m : mp){
+            r.push_back(m.second);
+        }
+        return r;
+    }
+};
+```
+
+## Leetcode 128
+
+```c++
+#include <bits/stdc++.h>
+using namespace std;
+class Solution
+{
+public:
+    int longestConsecutive(vector<int> &nums)
+    {
+        unordered_set<int> s(nums.begin(), nums.end());
+        int longest = 0;
+        for (auto n : nums)
+        {
+        // check is the started number
+        if (!s.count(n-1)){
+                int length = 1;
+                while(s.count(n + length)){
+                    length++;
+                }
+                longest = max(longest,length);
+            }
+        }
+        return longest;
+    }
+};
+```

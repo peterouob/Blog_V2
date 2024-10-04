@@ -5,9 +5,10 @@ import {MobileNav} from "@/components/MobileNav";
 export default function Home() {
   return (
     <>
+
       <AuroraBackgroundDemo />
         <MobileNav/>
-      <AuroraBackgroundDemo />
+
     </>
   )
 }

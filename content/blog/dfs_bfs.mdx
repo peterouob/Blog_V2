@@ -1,0 +1,329 @@
+---
+title: Bfs/Dfs
+description: 學習算法
+date: 2024-09-06
+tags: ["code","c++","algo"]
+---
+
+### dfs Template
+
+- 鄰接圖
+  - result儲存結果
+  - path儲存路徑
+  - 當滿足條件時，將path存入result
+
+```c++
+void dfs(vector<vector<int>> &graph, int i)
+    {
+        if (i == n - 1)
+        {
+            result.push_back(path);
+            return;
+        }
+        for (int it : graph[i])
+        {
+            path.push_back(it);
+            dfs(graph, it);
+            path.pop_back();
+        }
+    }
+```
+
+### bfs Template
+
+```c++
+int dir[4][2] = { 
+  {0, 1}, 
+  {1, 0}, 
+  {-1,0},
+  {0, -1}
+}; // 表示四个方向
+// grid 是地图，也就是一个二维数组
+// visited标记访问过的节点，不要重复访问
+// x,y 表示开始搜索节点的下标
+void bfs(vector<vector<char>>& grid, vector<vector<bool>>& visited, int x, int y) {
+    queue<pair<int, int>> que; // 定义队列
+    que.push({x, y}); // 起始节点加入队列
+    visited[x][y] = true; // 只要加入队列，立刻标记为访问过的节点
+    while(!que.empty()) { // 开始遍历队列里的元素
+        pair<int ,int> cur = que.front(); que.pop(); // 从队列取元素
+        int curx = cur.first;
+        int cury = cur.second; // 当前节点坐标
+        for (int i = 0; i < 4; i++) { // 开始想当前节点的四个方向左右上下去遍历
+            int nextx = curx + dir[i][0];
+            int nexty = cury + dir[i][1]; // 获取周边四个方向的坐标
+            if (nextx < 0 || nextx >= grid.size() || nexty < 0 || nexty >= grid[0].size()) continue;  // 坐标越界了，直接跳过
+            if (!visited[nextx][nexty]) { // 如果节点没被访问过
+                que.push({nextx, nexty});  // 队列添加该节点为下一轮要遍历的节点
+                visited[nextx][nexty] = true; // 只要加入队列立刻标记，避免重复访问
+            }
+        }
+    }
+}
+```
+
+#### Leetcode 200
+
+- dfs
+
+```c++
+class Solution {
+public:
+    void dfs(vector<vector<char>>& grid,int x,int y) {
+        if(x < 0 || x >= grid.size() || y < 0 || y >= grid[0].size() || grid[x][y] != '1'){
+            return ;
+        }
+        grid[x][y] = '0';
+        dfs(grid,x+1,y);
+        dfs(grid,x-1,y);
+        dfs(grid,x,y+1);
+        dfs(grid,x,y-1);
+    }
+    int numIslands(vector<vector<char>>& grid) {
+        if(grid.empty() || grid[0].empty()){
+            return 0;
+        }
+        int ans = 0;
+        for (int i=0;i<grid.size();i++){
+            for(int j=0;j<grid[0].size();j++){
+                if(grid[i][j] == '1'){
+                    ans++;
+                    dfs(grid,i,j);
+                }
+            }
+        }
+        return ans;
+    }
+};
+
+```
+
+- bfs
+
+```c++
+class Solution
+{
+public:
+    int numIslands(vector<vector<char>> &grid)
+    {
+        int ans = 0;
+        int rows = grid.size();
+        int cols = grid[0].size();
+        for (int r = 0; r < rows; r++)
+        {
+            for (int c = 0; c < cols; c++)
+            {
+                if (grid[r][c] == '1')
+                {
+                    ans++;
+                    bfs(grid, r, c, rows, cols);
+                }
+            }
+        }
+        return ans;
+    }
+private:
+     void bfs(vector<vector<char>> &grid, int r, int c, int rows, int cols)
+    {
+        queue<pair<int, int>> q;
+        q.push({r, c});
+        grid[r][c] = '0';
+
+        vector<pair<int, int>> dir = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+        while (!q.empty())
+        {
+            auto [row, col] = q.front();
+            q.pop();
+            for (auto [dr, dc] : dir)
+            {
+                int nr = row + dr;
+                int nc = col + dc;
+                if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && grid[nr][nc] == '1')
+                {
+                    q.push({nr, nc});
+                    grid[nr][nc] = '0';
+                }
+            }
+        }
+    }
+};
+```
+
+#### Leetcode 695
+
+- dfs
+
+```c++
+class Solution
+{
+public:
+    int count;
+    void dfs(vector<vector<int>> &grid, vector<vector<bool>> &visits, int x, int y, int rows, int cols)
+    {
+        if (visits[x][y] || grid[x][y] == 0)
+            return;
+        visits[x][y] = true;
+        count++;
+        vector<pair<int, int>> dir = {
+            {1, 0},
+            {-1, 0},
+            {0, 1},
+            {0, -1},
+        };
+        for (auto [dx, dy] : dir)
+        {
+            int nx = x + dx;
+            int ny = y + dy;
+            if (nx < 0 || nx >= rows || ny < 0 || ny >= cols)
+                continue;
+            dfs(grid, visits, nx, ny, rows, cols);
+        }
+    }
+    int maxAreaOfIsland(vector<vector<int>> &grid)
+    {
+        int result = 0;
+        int n = grid.size();
+        int m = grid[0].size();
+        vector<vector<bool>> vistis = vector<vector<bool>>(n, vector<bool>(m, false));
+        for (int i = 0; i < n; i++)
+        {
+            for (int j = 0; j < m; j++)
+            {
+                if (!vistis[i][j] && grid[i][j] == 1)
+                {
+                    count = 0;
+                    dfs(grid, vistis, i, j, n, m);
+                    result = max(result, count);
+                }
+            }
+        }
+        return result;
+    }
+};
+```
+
+- bfs
+
+```c++
+
+```
+
+### ACM101
+
+- dfs
+
+```c++
+#include <bits/stdc++.h>
+using namespace std;
+
+int n, m, result = 0;
+
+void dfs(vector<vector<int>> &grid, int x, int y, int mx, int my)
+{
+    grid[x][y] = 0;
+    result++;
+    vector<pair<int, int>> dic = {
+        {1, 0},
+        {-1, 0},
+        {0, 1},
+        {0, -1},
+    };
+    for (auto [dx, dy] : dic)
+    {
+        int nx = x + dx;
+        int ny = y + dy;
+        if (nx >= 0 && nx < mx && ny >= 0 && ny < my && grid[nx][ny] == 1)
+        {
+            dfs(grid, nx, ny, mx, my);
+        }
+    }
+}
+
+int main()
+{
+    cin >> n >> m;
+    vector<vector<int>> grid = vector<vector<int>>(n, vector<int>(m, 0));
+    vector<vector<bool>> visits = vector<vector<bool>>(n, vector<bool>(m, false));
+
+    for (int i = 0; i < n; i++)
+    {
+        for (int j = 0; j < m; j++)
+        {
+            cin >> grid[i][j];
+        }
+    }
+
+    // left -> right
+    for (int i = 0; i < n; i++)
+    {
+        if (grid[i][0] == 1)
+            dfs(grid, i, 0, n, m);
+        if (grid[i][m - 1] == 1)
+            dfs(grid, i, m - 1, n, m);
+    }
+
+    for (int i = 0; i < m; i++)
+    {
+        if (grid[0][i] == 1)
+            dfs(grid, 0, i, n, m);
+        if (grid[n - 1][i] == 1)
+            dfs(grid, n - 1, i, n, m);
+    }
+
+    result = 0;
+    for (int i = 0; i < n; i++)
+    {
+        for (int j = 0; j < m; j++)
+        {
+            if (grid[i][j] == 1)
+            {
+                dfs(grid, i, j, n, m);
+            }
+        }
+    }
+    cout << result << endl;
+}
+```
+
+### Leetcode 733
+
+```c++
+#include <bits/stdc++.h>
+
+using namespace std;
+
+class Solution
+{
+public:
+    int n, m, startColor = 0;
+    void dfs(int x, int y, vector<vector<int>> &image, vector<vector<int>> &ans, int initColor, int newColor)
+    {
+        ans[x][y] = newColor;
+        vector<pair<int, int>> dic = {
+            {1, 0},
+            {-1, 0},
+            {0, 1},
+            {0, -1},
+        };
+        for (auto [dx, dy] : dic)
+        {
+            int nx = x + dx;
+            int ny = y + dy;
+            if (nx >= 0 && nx < n && ny >= 0 && ny < m && image[nx][ny] == initColor && ans[nx][ny] != newColor)
+            {
+                dfs(nx, ny, image, ans, initColor, newColor);
+            }
+        }
+    }
+    vector<vector<int>> floodFill(vector<vector<int>> &image, int sr, int sc, int color)
+    {
+        n = image.size();
+        m = image[0].size();
+        vector<vector<int>> &ans = image;
+        int initColor = image[sr][sc];
+        dfs(sr, sc, image, ans, initColor, color);
+        return ans;
+    }
+};
+// @lc code=end
+```

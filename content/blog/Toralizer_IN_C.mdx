@@ -1,0 +1,208 @@
+---
+title: toralizer in c
+description: 使用c並運用tor完成一個簡單的proxy server
+date: 2024-6-26
+tags: ["c","code","net"]
+---
+
+## command to read c docs
+- system call
+  `man 2 socket`
+- library call
+  `man 3 atoi`
+
+
+## argv in c
+```c
+int main(int argc, char *argv[])
+      ./toralize   1.2.3.4     80
+argv      0           1         2
+```
+
+
+## Socket 4 RPC
+[socket 4 protocol](https://www.openssh.com/txt/socks4.protocol)
+
+### Send packet
+
+```text
+
+		+----+----+----+----+----+----+----+----+----+----+....+----+
+		| VN | cD | DSTPORT |      DSTIP        | USERID       |NULL|
+		+----+----+----+----+----+----+----+----+----+----+....+----+
+ # of bytes:	   1    1      2              4           variable       1
+```
+
+#### Use c to define
+
+```c
+struct proxy_request
+{
+    int8 vn;
+    int8 cd;
+    int16 dstport;
+    int32 dstip;
+    unsigned char username[8];
+};
+
+typedef struct proxy_request Req;
+```
+
+### Receive packet
+
+```text
+		+----+----+----+----+----+----+----+----+
+		| VN | cD | DSTPORT |      DSTIP        |
+		+----+----+----+----+----+----+----+----+
+ # of bytes:	   1    1      2              4
+```
+
+#### Use c to define
+
+```c
+struct proxy_response
+{
+    int8 vn;
+    int8 cd;
+    // are not important
+    int16 _;
+    int32 __;
+};
+
+typedef struct proxy_response Res;
+```
+
+## PORT Binary
+
+## Makefile
+
+```Make
+all:
+	gcc toralize.c -o toralize
+```
+
+## Tor proxy socket 4
+
+```c
+int main(int argc, char *argv[])
+{
+    char *host;
+    int port, s;
+    struct sockaddr_in sock;
+
+    if (argc < 3)
+    {
+        fprintf(stderr, "Usage: %s <host> <port> \n", argv[0]);
+        return -1;
+    }
+
+    host = argv[1];
+    port = atoi(argv[2]);
+
+    s = socket(AF_INET, SOcK_STREAM, 0);
+    if (s < 0)
+    {
+        perror("socket");
+        return -1;
+    }
+
+    sock.sin_family = AF_INET;
+    sock.sin_addr.s_addr = inet_addr(PROXY);
+    sock.sin_port = htons(PROXYPORT);
+
+    if (connect(s, (struct sockaddr *)&sock, sizeof(sock)))
+    {
+        perror("connect");
+        return -1;
+    };
+
+    printf("connected to proxy \n");
+    return 0;
+}
+```
+
+## Finish define Request packet use c
+
+```c
+Req *request(const char *dstip, const int dstport)
+{
+    Req *req;
+
+    req = malloc(reqsize);
+
+    // sockets 4 protocal
+    req->vn = 4;
+    req->cd = 1;
+    req->dstport = htons(dstport);
+    req->dstip = inet_addr(dstip);
+    strncpy(req->username, USERNAME, 8);
+
+    return req;
+};
+```
+
+## Finish send req and receive use c
+
+```c
+  Req *req;
+  Res *res;
+  char buf[ressize];
+  // boolean
+  int success;
+    
+  req = request(host, port);
+  write(s, req, reqsize);
+
+  memset(buf, 0, ressize);
+  if (read(s, buf, ressize) < 1)
+  {
+     perror("read");
+     free(req);
+     close(s);
+     
+     return -1;
+  };
+
+  res = (Res *)buf;
+  // 90 is the socket protocal means suceess
+  success = (res->cd == 90);
+  if (!success)
+  {
+     fprintf(stderr, "Unable to traverse"
+                        "the proxy, error code: %d \n",
+             res->cd);
+
+     close(s);
+     free(req);
+     return -1;
+  }
+  printf("Successfully connected through the proxy to %s:%d\n", host, port);
+  close(s);
+  free(req);
+```
+
+## return code in packet
+
+```text
+    90: request granted
+	91: request rejected or failed
+	92: request rejected becasue SOcKS server cannot connect to
+	    identd on the client
+	93: request rejected because the client program and identd
+	    report different user-ids
+```
+
+## simulation HTTP HEAD
+
+```c
+  char tmp[512];
+  memset(tmp, 0, 512);
+  snprintf(tmp, 512, "HEAD / HTTP/1.0\r\n"
+                       "Host: www.networktechnology.org\r\n"
+                       "\r\n");
+  write(s, tmp, strlen(tmp));
+
+  memset(tmp, 0, 512);
+  read(s, tmp, 511);
+  printf("'%s'\n", tmp);
+```

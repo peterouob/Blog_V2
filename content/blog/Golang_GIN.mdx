@@ -1,0 +1,680 @@
+---
+title: GinPackage學習
+description: 簡單說明Gin內部函數用法，當作看簡單版文檔就行
+date: 2022-12-30
+tags: ["code","golang","package"]
+---
+
+# Gin package
+
+http狀態碼不推薦使用數字，使用http.StatusCode
+
+- 開始使用Gin
+- 使用go mod init 包名稱 來初始化go mode
+- go get github.com/gin-gonic/gin
+- 所有跟請求相關得都能在c *gin.Context裡面找到
+- 所有跟服務器有關都能再r 裡面找到 → r := gin.Default()
+
+## 開始使用Gin
+
+```go
+package main
+
+import"github.com/gin-gonic/gin"
+
+func main() {
+   r := gin.Default()
+   r.Run()
+}
+```
+
+- gin只需要兩行的代碼就能開啟服務器
+- 使用Run的話gin會預設開啟8080port
+- 如果沒有連接到會出現404
+
+## 基本的GET
+
+```go
+package main
+
+import"github.com/gin-gonic/gin"
+
+func main() {
+   r := gin.Default()
+   r.GET("/",func(c *gin.Context){
+      c.JSON(200, gin.H{
+         "status":"success",
+      })
+   })
+   r.Run()
+}
+```
+
+## 基本的POST
+
+```go
+r.POST("/ping/:id",func(c *gin.Context) {
+   id := gin.Param{}
+   c.JSON(200,gin.H{
+      "status":"success",
+      "id":id,
+   })
+})
+```
+
+使用Param獲得單一網址的參數,在這個程式中獲得id
+
+# Query string
+
+## 獲取query string 參數
+
+# 什麼是query string?
+
+- 當你使用瀏覽器將數值輸入進輸入框中，url所呈現出的樣子。
+- 使用以下圖片說明的話，q=後就得字串就是queryString
+- GET請求 ? 後面的就是queryString參數
+- key=value的格式，多個key-value格式用 & 串接
+
+ex: /web/query=peter & age=18
+
+
+## 使用golang實現query string
+
+1.使用c.Query
+
+```go
+packagemain
+
+import"github.com/gin-gonic/gin"
+
+funcmain() {
+   r := gin.Default()
+
+   r.GET("/user",func(c *gin.Context){
+      name := c.Query("query")//透過Query獲得請求中攜帶的queryString參數
+      c.JSON(200, gin.H{
+         "name":name,
+      })
+   })
+
+   r.Run()
+}
+
+```
+
+### peter便為自訂義的query string
+
+2.使用DefaultQuery函數來設定默認值
+
+### `c.DefaultQuery(請求標頭，和Query的參數一樣,當請求標頭參數為空值時顯示默認值)`
+
+3.使用GetQuery來判斷是否有傳遞參數(Query string)
+
+### `name ,ok := c.GetQuery("和Query參數一樣")`
+
+### 使用GetQuery返回值中的bool來認定是否有傳遞參數(判斷方法->使用!ok)
+
+# Form 參數
+
+### 使用c.PostForm時，postman要設定在form-data中，key就是PostForm的參數
+
+## 一次請求對應一個響應(GET，POST...)
+
+## 請求地址可以相同，方法可以不同
+
+1.使用模板語法來創造發出請求的前端表單
+
+```go
+package main
+import(
+   "net/http"
+
+   "github.com/gin-gonic/gin"
+)
+funcmain() {
+   r := gin.Default()
+   r.LoadHTMLFiles("login.html")
+
+r.GET("/login",func(c *gin.Context)  {
+      c.HTML(http.StatusOK,"login.html",nil)
+   })
+   r.Run()
+}
+```
+
+- c.HTML可以在用戶訪問指定的url時渲染出指定的html文件
+- r.LoadHTMLFiles可以讓用戶加載出自身所指定的html文件
+
+2.前端表單如下
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Document</title>
+</head>
+
+<body>
+	<form action="/login" method="POST">
+		<div class="">
+			<label for="username">Username:</label>
+			<input type="text" name="username">
+		</div>
+		<div class="">
+			<label for="password">Password:</label>
+			<input type="password" name="password">
+		</div>
+		<div class="">
+			<input type="submit" value="Login">
+		</div>
+	</form>
+</body>
+</html>
+```
+
+- 使用html中form的action來決定傳遞的ur需要使用
+- Method則是傳遞的方法
+- 在form表單中需要使用type為submit的按鈕來傳送請求
+
+3.接收前端POST請求的後端代碼
+
+```go
+r.POST("/login",func(c *gin.Context) {
+	username := c.Request.FormValue("username")
+	password := c.Request.FormValue("password")
+	c.JSON(200,gin.H{
+		"username:":username,
+		"password:":password,
+	})
+})
+```
+
+- 獲取input內容值的方法
+1. 使用c.Request.FormValue(”input的名稱”)
+2. 使用c.PostForm(”input的名稱") →取道返回值，取不到返回空字符串
+3. 使用GetPostForm("input的名稱”)來判斷使用者是否有輸入值
+
+
+# 獲取URI參數(Path
+
+## 避免匹配重複url
+
+```go
+r.GET("/:name/:age",func(c *gin.Context) {})
+r.GET("/blog/:month/:year",func(c *gin.Context) {})
+```
+
+此時的/:name/:age 會和 /:month/:year 有衝突
+
+- 解決方法為設定不同根目錄
+
+```go
+r.GET("/user/:name/:age",func(c *gin.Context){})
+r.GET("/blog/:month/:year",func(c *gin.Context) {})
+```
+
+獲得URI參數
+
+- 使用c.Param來獲的路徑參數內容→返回的皆為string類型
+
+```go
+packag emain
+
+import "github.com/gin-gonic/gin"
+
+funcmain() {
+   r := gin.Default()
+   r.GET("/:name/:age",func(c *gin.Context) {
+//獲取URI參數
+			name := c.Param("name")
+      age := c.Param("age")
+
+      c.JSON(200,gin.H{
+         "name": name,
+         "age": age,
+      })
+   })
+   r.Run()
+}
+```
+
+# 參數綁定
+
+- 可以藉由結構體Struct來傳遞多個參數內容
+
+但是不能每一次都使用Query或其他必須設定多預設的方法
+
+否則會造成程式碼繁雜且凌亂
+
+  ```go
+  username := c.Query("username")
+  password := c.Query("password")
+
+  u := UserInfo{username: username, password: password}
+    ```
+
+- 因此使用到 c.ShouldBind這個函數來幫忙設定
+
+```go
+package main
+
+import(
+   "fmt"
+   "github.com/gin-gonic/gin"
+)
+
+typeUserInfostruct{
+   Username string  `form:"username"`
+   Password string  `form:"password"`
+}
+
+funcmain() {
+   r := gin.Default()
+	 var u UserInfo //初始化結構體
+   r.GET("/user",func(c *gin.Context) {
+      err := c.ShouldBind(&u)
+		if err != nil {
+         c.JSON(400,gin.H{
+            "error" : err.Error(),
+         })
+      }else{
+         fmt.Printf("%#v\n",u)
+         c.JSON(200,gin.H{
+            "status" : "ok",
+         })
+      }
+   })
+   r.Run()
+}
+```
+
+- 因為SholudBind這個函數必須要改到Struct裡面的內容
+
+所以必須傳遞位址而非單純的值
+
+- Go語言中的函數都會是改動原先結構體複製出來的位置址的內容而非自己本身
+- ShouldBind之所以能夠知道你所傳遞的值是使用"反射"這個方法
+- ShouldBind會跑去接構體中一個個找
+- 如果結構體有json標籤可以使用BindJson來獲得傳入的值
+
+使用tag來綁定結構體(tag可以依照使用者自行設定
+
+**常用的結構體tag**
+
+- **json →**json序列化或反序列化时字段的名称→使用post時，參數值的名稱必須和tag一樣
+- **db →**sql模块中对应的数据库字段名
+- **form →**gin框架中对应的前端的数据字段名 →input中的name
+- **binding →**搭配 form 使用, 默认如果没查找到结构体中的某个字段则不报错值为空, binding为 required 代表没找到返回错误给前端
+
+使用json格式(最常用
+
+```go
+r.POST("/json",func(c *gin.Context) {
+	err := c.ShouldBind(&u)
+	if err != nil {
+			c.JSON(400,gin.H{
+			"error" : err.Error(),
+		})
+	}else{
+			fmt.Printf("%#v\n",u)
+			c.JSON(200,gin.H{
+				"username":u.Username,
+				"password":u.Password,
+		})
+	}
+})
+```
+
+- 需要將Struct設定json這個tag，否則會不知道你傳入甚麼
+
+```go
+
+type UserInfo struct{
+	Username string  `form:"username" json:"username"`
+	Password string  `form:"password" json:"password"`
+}
+```
+
+### 接著使用vscode內建得Thunder Client來測試
+
+## shouldBind會按照以下方式來進行綁定
+
+### 1.GET請求 → 只是用Form綁定引擎(Query
+
+### 2.POST請求→檢查content-type中是否為json再使用Form(form-data)
+
+# 文件上傳
+
+- 前端代碼
+- form必須設定enctype="multipart/form-data
+
+因為其中一個input的type是file類型
+
+
+```html
+<form action="/upload" method="POST" enctype="multipart/form-data">
+   <input type="file" name="f1" >
+   <input type="submit" value="Upload" />
+</form>
+```
+
+- 後端代碼
+
+```go
+package main
+
+import(
+   "path"
+
+   "github.com/gin-gonic/gin"
+)
+
+funcmain() {
+   r := gin.Default()
+   r.LoadHTMLFiles("index.html")
+
+   r.GET("/index",func(c *gin.Context)  {
+      c.HTML(200,"index.html",nil)
+   })
+
+   r.POST("/upload",func(c *gin.Context){
+//讀取文件
+	f,err := c.FormFile("f1")
+	if err != nil {
+         c.JSON(400,gin.H{
+            "err":err.Error(),
+         })
+      }
+//保存文件
+		dst := path.Join("./",f.Filename)
+      c.SaveUploadedFile(f,dst)
+   })
+   r.Run()
+}
+```
+
+- 使用c.FormFile讀取前端上傳文件的name
+- 使用path包中的Join來串接保存文件的地址
+- 使用SaveUploadedFile來保存文件到本地，第一個參數為文件，第二個是文件儲存得位址
+- 可以使用r.MaxMultipartMemory來設定最大上傳byte數(默認最大32MB
+
+# 請求重定向
+
+- 常見用法
+1. 購物中心的註冊，尚未註冊時跳轉到註冊畫面
+2. 網站的404跳轉
+
+### 1.使用c.Redirect重新定向
+
+```go
+c.Redirect(http.StatusMovedPermanently,"https://www.google.com")
+```
+
+- 第一個參數為http狀態碼 ⇒301→”StatusMovedPermanently"
+- 第二個參數是重定向後的位置
+
+### 2.使用各自router重新定向
+
+```go
+    r.GET("/a",func(c *gin.Context) {
+      c.Request.URL.Path = "/b"
+      r.HandleContext(c)
+   })
+   r.GET("/b",func(c *gin.Context) {
+      c.JSON(200,gin.H{
+      "status":"This is b",
+   })
+})
+```
+
+- 使用c.Request.URL.Path = “要跳轉的網頁網址” ⇒把請求的URI修改
+- r.HandleContext重新定向 ⇒繼續後續的處理
+
+# Router
+
+- 主要的方式有(可以使用Any代表所有方法
+  1. 查詢 →GET
+  2. 註冊 →POST
+  3. 更新 →PUT
+  4. 刪除  →Delete
+- 盡量用別人定義好的常量 Ex:寫http.StateOK 會比 直接寫 200還要更好
+
+- Any方法→大集合(懶再用此方法
+
+```go
+r.Any("/user",func(c *gin.Context) {
+switch c.Request.Method{
+case http.MethodGet: c.JSON(http.StatusOK,gin.H{"method": "GET"})
+case http.MethodPost: c.JSON(http.StatusOK,gin.H{"method": "POST"})
+case http.MethodPut: c.JSON(http.StatusOK,gin.H{"method": "PUT"})
+case http.MethodDelete: c.JSON(http.StatusOK,gin.H{"method": "DELETE"})
+}
+```
+
+當用戶輸入錯誤的網址or路由時，避免返回到默認的404
+
+- 使用r.NotRoute來避免發生此問題
+- 當用戶對不吋在的URL發送請求時由此函數進行處理
+
+```go
+r.NoRoute(func(c *gin.Context) {
+	c.JSON(200,gin.H{"method": "NORouter"})
+})
+
+```
+
+- 使用Group避免產生過多重複
+- 路由組多用來區分不同的業務線獲API版本
+
+```go
+UserGroup := r.Group("/user")
+{
+UserGroup.GET("/index",func(c *gin.Context){c.JSON(http.StatusOK,
+gin.H{"status":"get"})})
+UserGroup.POST("/index",func(c *gin.Context){c.JSON(http.StatusOK,
+gin.H{"status":"post"})})
+UserGroup.PUT("/index",func(c *gin.Context){c.JSON(http.StatusOK,
+gin.H{"status":"put"})})
+UserGroup.DELETE("/index",func(c *gin.Context){c.JSON(http.StatusOK,
+gin.H{"status":"delete"})})
+}
+```
+
+- r.Group把公用的前綴提取出來，創建一個路由組
+
+
+- Gin中的Router支持Group嵌套
+
+# 中間件middleware
+
+- 中間件用來處理送出請求後發生的重複函數
+- Gin的中間件必須是gin.HandleFunc類型
+
+→ gin.HandleFunc類型代表函數參數為c *gin.Context
+
+- 全部，單個，甚至是Group都可以設置中間件
+
+### 設定中間件
+
+```go
+package main
+
+import(
+   "fmt"
+   "net/http"
+   "github.com/gin-gonic/gin"
+)
+
+func indexFunc (c *gin.Context){
+   fmt.Println("indexFunc")
+   c.JSON(http.StatusOK,gin.H{
+      "status" : "success",
+   })
+}
+
+func m1(c *gin.Context){fmt.Println("m1")}
+func main() {
+   r := gin.Default()
+   r.GET("/index",m1,indexFunc)
+   r.Run(":9090")
+}
+```
+
+- 由於GET方法第二個參數可以傳入多個HandleFunc
+
+所以由最先傳入的參數開始處理，因此會先執行m1再接著執行indexFunc
+
+
+```go
+*func* (group *RouterGroup) GET(relativePath string, handlers ...HandlerFunc)
+```
+
+### 為m1新增計時的功能
+
+```go
+func m1(c *gin.Context){
+fmt.Println("m1")
+
+start := time.Now()
+c.Next()
+cost := time.Since(start)
+fmt.Printf("cost :%v\n",cost)
+
+fmt.Println("m1 End")
+}
+```
+
+- 使用c.Next來處理後續函數，相當於調用indexFunc
+
+可以使用c.Abort來阻止處理後續函數
+
+- 和前一個範例最大的不同是使用next時會先跑去執行完後續的函數(indexFunc)，再回來執行m1
+
+### 可以使用r.Use來全局註冊中間件
+
+```go
+func main() {
+r := gin.Default()
+r.Use(m1)
+r.GET("/index",indexFunc)
+
+r.GET("/shop",func(c *gin.Context){
+	c.JSON(http.StatusOK,gin.H{
+	"status":"shop",
+	})
+})
+r.GET("/user",func(c *gin.Context){
+	c.JSON(http.StatusOK,gin.H{
+	"status":"user",
+	})
+})
+	r.Run(":9090")
+}
+```
+
+- 因為有使用r.Use(m1)，代表main函數中的方法都有使用到m1這個中間件
+
+
+- 使用多個中間件時的順序
+
+- 同時使用到Next和Abort時的順序
+
+- 一般中間件會採用閉包的方式
+- 因為使用閉包，所以能在返回HandleFunc前處理前置工作
+
+也可以傳入參數，使用參數來判斷(傳入類型為bool的參數
+
+
+```go
+func authMiddleware()gin.HandlerFunc{
+	//連接數據庫
+	//其他準備工作
+	return func(c *gin.Context){
+	//判斷登入
+	// IF登入用戶
+	// Next
+	   // else
+	   // Abort
+	}
+}
+```
+
+### 為Group設定中間件的第一種方法
+
+```go
+Users := r.Group("/userRouter",authMiddleware(true))
+{
+   Users.GET("/user",func(c *gin.Context){
+      c.JSON(http.StatusOK,
+      gin.H{"msg": "user"},
+   )})
+}
+```
+
+### 為Group設定中間件的第二種方法
+
+```go
+Users := r.Group("/userRouter")
+   Users.Use(authMiddleware(true))
+   {
+      Users.GET("/user",func(c *gin.Context){
+      c.JSON(http.StatusOK,
+      gin.H{"msg": "user"},
+   )})
+}
+```
+
+- 讓中間件能傳入值到後續函數
+
+```go
+func indexFunc (c *gin.Context){
+	fmt.Println("indexFunc")
+	name,ok := c.Get("name")
+	if !ok {
+		return
+	}
+	c.JSON(http.StatusOK,gin.H{
+		"status" : name,
+	})
+}
+
+func m1(c *gin.Context){
+   fmt.Println("m1")
+   start := time.Now()
+   c.Set("name","peter")
+   c.Next()
+   cost := time.Since(start)
+   fmt.Printf("cost :%v\n",cost)
+   fmt.Println("m1 End")
+}
+funcmain() {
+   r := gin.Default()
+   r.Use(m1)
+   r.GET("/index",indexFunc)
+
+   r.Run(":9090")
+}
+```
+
+- 使用c.Set來設定要傳入的參數和值(”parms”,”value”)
+
+後續函數可以使用Get來獲得指定參數(必須和Set所設定的parms一樣)的值→Get跨中間件取值
+
+Get的話會返回一個Bool來判斷是否正確，使用MustGet效果一樣但不會返回bool
+
+### Gin中的默認中間件
+
+  1. gin.Default會默認使用Logger和Recovery中間件
+ - Logger中間件將Log寫入gin.DefaultWriter
+ - Recovery中間件會recover所有的panic，如果有panic會返回500響應碼
+
+如果想要自行定義，可以使用gin.New新建一個沒有任何默認中間件的路由
+
+  2. gin中使用goroutine
+ - 當在中間件或Handler中啟動新的goroutine
+
+不能使用c *gin.Context而是需要使用其只讀副本c.Copy

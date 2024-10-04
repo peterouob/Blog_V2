@@ -26,9 +26,10 @@ export function AuroraBackgroundDemo() {
                        Welcome to my Blog
                    </div>
                    <FloatingDockDemo />
-                   <ThemeToggle />
+                   <div className="container">
+                       <ThemeToggle />
+                   </div>
 
-                   <h2 className="text-3xl lg:text-7xl font-black text-center dark:text-zinc-50">Latest Posts</h2>
                    <CardHoverEffectDemo />
 
                </motion.div>

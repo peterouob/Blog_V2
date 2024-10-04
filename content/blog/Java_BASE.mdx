@@ -1,0 +1,522 @@
+---
+title: java
+description: 使用簡單資料結構演示java基礎語法
+date: 2023-07-05 09:55:02
+tags: ["code","java","base"]
+---
+
+# 基礎語法
+
+---
+
+```java
+Main.java
+public class Main{
+    public static void main(String[] args){
+        System.out.println("Hello World!");
+    }
+}
+
+在終端輸入javac Main.java
+會產生java.class =>這具有java運行時環境的操作系統(JRE)
+
+在java.com所下載的稱為java虛擬機(jvm)
+jvm會獲取我們java Byte code轉換程Native code(windows,mac)
+
+```
+
+## Basic for java
+
+---
+
+| type | Bytes | Range |
+| --- | --- | --- |
+| byte | 1 | -128~127 |
+| short | 2 | -32K~32K |
+| int | 4 | -2B~2B |
+| long | 8 |  |
+| float | 4 |  |
+| double | 8 |  |
+| char | 2 |  |
+| boolean | 1 |  |
+
+```java
+public class Main{
+
+ public static void main(String[] args){
+    long view = 3_123_456_789; //報錯
+    //java默認下將這些數字視為整數,認為數字太大.在句尾加上L or l 就能解決
+
+  }
+}
+
+//type
+public class Main{
+    public static void main(String[] args){
+        byte age = 30;
+        long viewsCount = 3_123_456_789L;
+        float price = 10.99F;//java默認為雙晶,在後面加F or f 才能用float
+        char letter = 'A';
+        boolean isEqual = true;
+    }
+}
+
+/*
+
+*/
+```
+
+# Point
+
+---
+
+```java
+import java.awt.*;
+public class Main{
+    public static void main(String[] args){
+        Point point1 = new Point(1,1);//類似指針
+        Point point2 = point1;
+        //point1 point2指向相同地址
+        point1.x = 2;
+        System.out.println(point2.x);
+    }
+}
+
+//將指針 * 轉為point
+```
+
+## String
+
+---
+
+```java
+public class Main{
+    public static void main(String[] args){
+        String message = " hello world!" + "peter ";
+        System.out.println(message.endsWith("hello world")); //endsWith檢查字尾的字串,是的話返回true
+        System.out.println(message.startsWith("hello world")); // startWith檢查字頭,是的話返回true
+        System.out.println(message.length());
+        System.out.println(message.indexOf("h")); //0
+        System.out.println(message.replace("peter","amy"));//返回心字串,並不更改原字串
+        System.out.println(message.toUpperCase());//轉大寫
+        System.out.println(message.trim());//去除字頭和字尾的空格
+
+    }
+}
+
+public class Main{
+    public static void main(String[] args){
+        String msg = "c:\\Window\\..."; //c:\Window\...
+        String message = "hello \"peter\""; //hello "peter"
+        System.out.println(message);
+        System.out.println(msg);
+    }
+}
+```
+
+## Array
+
+---
+
+```java
+import java.util.Arrays;
+
+public class Main {
+    public static void main(String[] args) {
+        // 不應該對術組進行修改或刪除
+
+        int[] numbers = new int[5];
+        numbers[0] = 1;
+        numbers[1] = 2;
+        System.out.println(numbers);
+        //打印出亂數是因爲Java返回的字符串是根據該對象的地址計算,每個對象都在不同的內存
+        //需要調用Arrays
+
+        System.out.println(Arrays.toString(numbers));
+
+        int[] numbers2 = {1,2,5,12,10};
+        System.out.println(Arrays.toString(numbers2));
+        System.out.println(numbers2.length); //5
+
+        Arrays.sort(numbers2);//排序
+        System.out.println(Arrays.toString(numbers2));
+    }
+}
+
+/*
+
+*/
+
+多維陣列
+import java.util.Arrays;
+
+public class Main {
+    public static void main(String[] args) {
+        int[][] numbers = new int[2][3];
+        numbers[0][0] = 1;
+        System.out.println(Arrays.deepToString(numbers));
+        //toString只能用在一為陣列,一為以上要用deepToString
+
+        int [][] numbers2 = {{1,2,3},{4,5,6}};//第一個{}代表第一個[]
+        System.out.println(Arrays.deepToString(numbers2));
+    }
+}
+
+/*
+
+*/
+```
+
+## Const
+
+---
+
+```java
+public class Main {
+    public static void main(String[] args) {
+        final float PI = 3.14f; //視為const,const use 大寫
+    }
+}
+```
+
+## 算術運算符
+
+---
+
+```java
+
+public class Main {
+    public static void main(String[] args) {
+        double num = 10 / 3; //3.0
+        double num2 = (double)10 / (double)3;//3.3333333
+        System.out.println(num);
+        System.out.println(num2);
+
+        int x = 1;
+        int y = x++ ;
+        System.out.println(x);//2
+        System.out.println(y);//1
+    }
+}
+/*
+
+*/
+```
+
+## 類型轉換
+
+---
+
+```java
+public class Main {
+    public static void main(String[] args) {
+        //Implicit casting
+        //byte > short > int > long > float > double
+        short x = 1;
+        int y = x +2 ;
+        System.out.println(y);//3 處理兩種不同類型
+        //java看到變量中的值為1,將他分配到匿名變亮,java copy x 然後相加 =>隱式轉換
+
+        double a = 1.1;
+        double b = a + 2;//此時將2(int)轉換成2.0(double)再相加
+        int c = (int)b + 2;//顯示轉換,輸出5
+        System.out.println(c);
+
+        String num = "1";
+        int age = 12;
+        int who = Integer.parseInt(num) + age; //string沒辦法顯示轉換,要調用包來轉換
+        System.out.println(who); //13
+    }
+}
+/*
+
+*/
+```
+
+## Math
+
+---
+
+```java
+public class Main {
+    public static void main(String[] args) {
+        int result = Math.round(1.1F);//1
+        int result2 = (int)Math.ceil(2.5F);//大於這個的最小整數
+        int result3 = (int) Math.floor(2.5F);// 小於這個的最小整數
+        int result4 = Math.max(1, 2);//返回大的數,min就返回小的數
+
+        double result5 = Math.random()*100;//產生0~1的隨機數,如果要增加範圍就*增加到的那個數
+        double result6 = Math.round(Math.random()*100);//取四捨五入到小數點第一位
+        //round不能發生隱式轉換
+        int result7 = (int)Math.round(Math.random()*100);//轉乘int
+        int result8 = (int) Math.random() * 100;//輸出0,因為每一次產生的都是0~1之間,取整數後0＊any = 0
+        int result9= (int) (Math.random() * 100); //產生0~100隨機數
+        System.out.println(result2);
+        System.out.println(result3);
+        System.out.println(result5);
+        System.out.println(result6);
+        System.out.println(result7);
+        System.out.println(result8);
+        System.out.println(result9);
+    }
+}
+/*
+
+*/
+```
+
+## Number format
+
+---
+
+```java
+import java.text.NumberFormat;
+
+public class Main {
+    public static void main(String[] args) {
+       // 10%
+        NumberFormat currency =  NumberFormat.getCurrencyInstance();
+        String result = currency.format(1234567.89); // $1,234,567.89
+        System.out.println(result);
+
+        NumberFormat percent = NumberFormat.getPercentInstance();
+        String result2 = percent.format(10); // 10%
+        System.out.println(result2);
+
+        String result3 = NumberFormat.getNumberInstance().format(123);
+        System.out.println(result3);
+    }
+}
+/*
+
+*/
+```
+
+## Scanner
+
+---
+
+```java
+import java.util.Scanner;
+
+public class Main {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        System.out.print("Name: ");
+        String name = scanner.nextLine().trim();
+        System.out.println("u r "+name);
+    }
+}
+/*
+
+*/
+```
+
+## for each
+
+```java
+import java.util.Scanner;
+
+public class Main {
+    public static void main(String[] args) {
+        String[] fruits = {"appele","banana","orange"};
+
+        for (int i = 0;i<fruits.length;i++)
+            System.out.println(fruits[i]);
+
+        for(String fruit : fruits) //將fruits裡面的值存放到fruit裏
+            System.out.println(fruit);
+    }
+}
+/*
+
+*/
+```
+
+# 基本資料結構
+
+---
+
+## Array
+
+```java
+import java.util.*;
+
+public class DataStruct {
+    public static void main(){
+        // Array
+        int[] nums = new int[10];
+        nums[0] = 1;
+        System.out.println("1.Array");
+        //打印array內容
+//        for (int n : nums){
+//            System.out.println(n);
+//        }
+        System.out.println(nums[0]);
+        System.out.println(Arrays.toString(nums));
+        System.out.println(nums.length);
+    }
+}
+```
+
+## String
+
+```java
+import java.util.*;
+
+public class DataStruct {
+    public static void main(){
+
+   //String
+        String s = new String("hello world");
+        s = new String(new char[]{'h','e','l','l','o'});
+        System.out.println("2.String");
+        System.out.println(s);
+        System.out.println(s.charAt(0)); //h
+        System.out.println(s.substring(0,2));//he ,[0,2)
+        System.out.println("a".compareTo("b")); //-1 ,a < b
+        System.out.println(s.contains("h")); //true ,是否包含
+    }
+}
+```
+
+## List
+
+```java
+import java.util.*;
+
+class ListNode{
+    int val;
+    ListNode next;
+    public ListNode(int val){
+        this.val = val;
+    }
+}
+
+public class DataStruct {
+    public static void main(){
+       //ListNode
+        //初始化
+        ListNode head = new ListNode(0);
+        //賦值
+        head.next = new ListNode(1);
+        System.out.println("3.ListNode");
+        //取值 head.val
+        while(head != null){
+            System.out.println(head.val);
+            head = head.next;
+        }
+
+    }
+}
+```
+
+## BinaryTree
+
+```java
+import java.util.*;
+
+class TreeNode{
+    int val;
+    TreeNode right;
+    TreeNode left;
+    public TreeNode(int val){
+        this.val = val;
+    }
+}
+
+public class DataStruct {
+    public static void main(){
+         //Tree
+        //初始化
+        TreeNode root = new TreeNode(0);
+        root.left = new TreeNode(1);
+        root.right = new TreeNode(2);
+        root.left.left = new TreeNode(3);
+        root.left.right = new TreeNode(4);
+        System.out.println("4.Tree");
+        /*
+        *       0
+        *      / \
+        *     1   2
+        *    / \
+        *   3   4
+        * */
+
+    }
+}
+```
+
+## Stack
+
+```java
+import java.util.*;
+
+public class DataStruct {
+    public static void main(){
+
+        //Stack，甲骨文doc推薦使用Deque取代stack
+        //Stack常用於實現DFS
+        //初始化
+        Stack<Integer> stack = new Stack<>();
+        stack.push(1);
+        stack.push(2);
+        stack.add(3); //更推薦用push
+        System.out.println("5.Stack");
+        System.out.println(stack.peek()); //只看輾頂不移除元素
+        System.out.println(stack.pop()); //輾頂元素彈出來
+        System.out.println(stack.pop()); //輾頂元素彈出來
+        System.out.println(stack.pop()); //輾頂元素彈出來
+        System.out.println(stack.isEmpty());; //檢查是否為空
+    }
+}
+```
+
+## Queqe
+
+```java
+import java.util.*;
+
+public class DataStruct {
+    public static void main(){
+
+        //Queue
+        //Queue常用來實現BFS
+        //初始化
+        Queue<Integer> queue = new LinkedList<>();
+        queue.offer(1); //推薦使用offer而不是add
+        queue.offer(2);
+        queue.add(3);
+        System.out.println("6.Queue");
+        System.out.println(queue.peek());//讀取先進元素且不移除
+        System.out.println(queue.poll());//移除先進元素，推薦使用poll而非remove，poll處理了空不會報錯
+        System.out.println(queue.poll());
+        System.out.println(queue.remove());
+        System.out.println(queue.poll()); //以為空輸出null
+
+    }
+}
+```
+
+## Deque
+
+```java
+import java.util.*;
+
+public class DataStruct {
+    public static void main(){
+
+        //Deque
+        //Deque和Queue最大的差別在不止從頭獲取資料，也能從尾獲取
+        //初始化
+        Deque<Integer> deque = new LinkedList<>();
+        deque.offerLast(1);
+        deque.addLast(2);
+        deque.offerFirst(3);
+        System.out.println("7.Deque");
+        System.out.println(deque.peekFirst());
+        System.out.println(deque.pollFirst());
+        System.out.println(deque.pollLast());
+    }
+}
+```
