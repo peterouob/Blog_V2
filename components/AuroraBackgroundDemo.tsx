@@ -21,7 +21,7 @@ export function AuroraBackgroundPage({children,className} : AuroraBackgroundProp
                        duration: 0.8,
                        ease: "easeInOut",
                    }}
-                   className="relative flex flex-col gap-4 items-center justify-center px-4 "
+                   className="relative flex flex-col lg:gap-4 items-center justify-center lg:px-4 "
                >
                    {children}
                </motion.div>
