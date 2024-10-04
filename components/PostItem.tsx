@@ -10,7 +10,7 @@ interface PostItemProps{
     description?:string,
     date: string
     tags?:Array<string>
-    key: string
+    key?: string
 }
 
 export function PostItem({slug,title,description,date,tags,key}:PostItemProps){
@@ -33,7 +33,7 @@ export function PostItem({slug,title,description,date,tags,key}:PostItemProps){
                         <time dateTime={date}>{formatDate(date)}</time>
                     </dd>
                 </dl>
-                <Link href={slug} className={cn(buttonVariants({variant: "link"}),"text-xl")}>
+                <Link key={key} href={slug} className={cn(buttonVariants({variant: "link"}),"text-xl")}>
                     Read More...
                 </Link>
             </div>
