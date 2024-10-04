@@ -7,8 +7,9 @@ import {Tag} from "@/components/Tags";
 import {PostItem} from "@/components/PostItem";
 import {PageHeader} from "@/components/PageHeader";
 import {AuroraBackground} from "@/components/Aurora";
+import {AuroraBackgroundPage} from "@/components/AuroraBackgroundDemo";
 
-const POST_PRE_PAGE = 5
+const POST_PRE_PAGE = 3
 
 interface BlogPageProps {
     searchParams:{
@@ -28,22 +29,20 @@ export default async function BlogPage({searchParams}:BlogPageProps){
     const tags = getAllTags(posts)
     const sortedTags = sortTagsByCount(tags)
     return (
-        <>
-            <PageHeader />
-        <div className="container max-h-full py-6 lg:py-10">
-            <div className="flex flex-col items-start gap-4 md:flex-row md:justify-between md:gap-8">
+        <AuroraBackgroundPage className="hidden">
+        <div className="container lg:py-10 dark:bg-zinc-700/10 bg-zinc-50 shadow-2xl rounded-lg ">
+            <div className="hidden lg:grid flex flex-col items-start gap-4 md:flex-row md:justify-between md:gap-8">
                 <div className="flex-1 space-y-4">
-                    <h1 className="inline-block font-black text-4xl lg:text-5xl">Blog</h1>
+                    <h1 className="inline-block font-black text-4xl lg:text-5xl dark:text-zinc-50">Blog</h1>
                 </div>
             </div>
             <div className="grid grid-cols-12 gap-3 mt-8">
                 <div className="col-span-12 col-start-1 sm:col-span-8 lg:text-xl">
-                    <hr />
                     {displayPosts.map((post) => {
                         const { slug, date, title, description, tags } = post;
                         return (
                             <ul key={slug}>
-                                <li className="no-underline list-none">
+                                <li className="no-underline list-none  dark:text-zinc-50">
                                     <PostItem
                                         slug={slug}
                                         date={date}
@@ -57,7 +56,7 @@ export default async function BlogPage({searchParams}:BlogPageProps){
                     })}
                     <QueryPagination
                         totalPages={totalPages}
-                        className="justify-end mt-4 "
+                        className="justify-end mt-4 dark:text-zinc-50 "
                     />
                 </div>
                     <Card className="col-span-12 row-start-3  sm:col-span-4 sm:col-start-9 sm:row-start-1 ">
@@ -73,6 +72,6 @@ export default async function BlogPage({searchParams}:BlogPageProps){
 
             </div>
         </div>
-       </>
+       </AuroraBackgroundPage>
     );
 }

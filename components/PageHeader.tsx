@@ -6,6 +6,8 @@ import {cn} from "@/lib/utils";
 import {buttonVariants} from "@/components/ui/button";
 import {Icons} from "@/components/icon";
 import {usePathname} from "next/navigation";
+import ThemeToggle from "@/components/Toggle";
+import React from "react";
 
 export function PageHeader(){
     const pathname = usePathname()
@@ -29,6 +31,7 @@ export function PageHeader(){
                         pathname === "/about" ? "text-foreground" : "text-foreground/60")}>
                         About
                     </Link>
+                    <ThemeToggle />
                 </nav>
             </div>
         </header>

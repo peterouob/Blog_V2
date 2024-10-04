@@ -17,7 +17,6 @@ import {
 import Link from "next/link";
 import React from "react";
 import { useRef, useState } from "react";
-import {NavbarDemo} from "@/components/MobileNav";
 
 export const FloatingDock = ({
   items,

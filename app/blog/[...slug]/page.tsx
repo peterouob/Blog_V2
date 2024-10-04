@@ -5,7 +5,7 @@ import {MDXContent} from "@/components/MdxComponents";
 import "@/styles/mdx.css"
 import {Tag} from "@/components/Tags";
 import {AuroraBackground} from "@/components/Aurora";
-import {PageHeader} from "@/components/PageHeader";
+
 interface PostPageProps {
     params: {
         slug: string[]
@@ -26,8 +26,6 @@ export default async function PostPage({params}:PostPageProps) {
     }
     return (
         <>
-            <PageHeader />
-
             <AuroraBackground>
                 <article className="container py-10 prose dark:prose-invert lg:max-w-[60vw] mx-auto ">
                     <h1 className="mb-2 lg:text-5xl">{post.title}</h1>

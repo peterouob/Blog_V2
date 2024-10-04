@@ -17,7 +17,7 @@ export const AuroraBackground = ({
     <main>
       <div
         className={cn(
-          "relative flex flex-col  h-[100vh] items-center justify-center light:bg-[linear-gradient(0deg,_#fafafa_0%,_#FFDEE9_100%)] dark:bg-zinc-900  text-slate-950 transition-bg",className
+          "relative flex flex-col h-[100vh] items-center justify-center bg-[linear-gradient(0deg,_#fafafa_0%,_#FFDEE9_100%)] dark:bg-zinc-900 dark:bg-none text-slate-950 transition-bg",className
         )}
         {...props}
       >

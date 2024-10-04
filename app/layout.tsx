@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
-import { FloatingNavDemo } from "@/components/Nav"
+import { FloatingNavComponent } from "@/components/Nav"
 import {Providers} from "@/components/Providers";
 import {SiteFooter} from "@/components/Fotter";
 import {MobileNav} from "@/components/MobileNav";
 import React from "react";
+import {PageHeader} from "@/components/PageHeader";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -40,7 +41,8 @@ export default function RootLayout({
 
         <div>
             {/*<NavbarDemo />*/}
-            <FloatingNavDemo />
+            <PageHeader />
+            <FloatingNavComponent />
             <main>
                 {children}
             </main>
