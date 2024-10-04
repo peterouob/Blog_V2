@@ -1,7 +1,6 @@
 "use client"
 
 import {FloatingDockDemo} from "@/components/DockDemo";
-import ThemeToggle from "@/components/Toggle";
 import {CardPost} from "@/components/CardPost";
 import React from "react";
 

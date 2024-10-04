@@ -2,7 +2,7 @@
 import { HoverEffect } from "./ui/card-hover-effect";
 import { sortPosts } from "@/lib/utils";
 import { posts } from "#site/content";
-import React, { useState, useEffect } from "react";
+import React from "react";
 
 export function CardPost() {
     const lastPost = sortPosts(posts).slice(0,6)

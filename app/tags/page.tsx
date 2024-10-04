@@ -2,7 +2,6 @@ import {Metadata} from "next";
 import {getAllTags, sortTagsByCount} from "@/lib/utils";
 import {posts} from "#site/content"
 import {Tag} from "@/components/Tags";
-import {AuroraBackground} from "@/components/Aurora";
 export const metadata: Metadata = {
     title: "Tags",
     description: "Topic I have written about"

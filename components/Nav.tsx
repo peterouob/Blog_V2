@@ -1,9 +1,8 @@
 "use client";
 
 import React from "react";
-import { useTheme } from "next-themes"; // Import useTheme from next-themes
 import { FloatingNav } from "./ui/floating-navbar";
-import { IconHome, IconMessage, IconUser, IconSun, IconMoon } from "@tabler/icons-react";
+import {IconBorderTop, IconHome, IconMessage, IconUser} from "@tabler/icons-react";
 export function FloatingNavComponent() {
 
 
@@ -22,7 +21,7 @@ export function FloatingNavComponent() {
         {
             name: "Top",
             link: "#",
-            icon: <IconUser className="h-4 w-4 text-neutral-500 dark:text-white" />,
+            icon: <IconBorderTop className="h-4 w-4 text-neutral-500 dark:text-white" />,
         },
     ];
 

@@ -1,12 +1,10 @@
 import {getAllTags, getPostsByTagsSlug, sortTagsByCount} from "@/lib/utils";
 import {posts} from "#site/content"
-import {CardPost} from "@/components/CardPost";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {Tag} from "@/components/Tags";
 import {slug} from "github-slugger";
 import {Metadata} from "next";
 import {PostItem} from "@/components/PostItem";
-import {AuroraBackgroundPage} from "@/components/AuroraBackgroundDemo";
 import {AuroraBackground} from "@/components/Aurora";
 
 interface  TagPagesProps {

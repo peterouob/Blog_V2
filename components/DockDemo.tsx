@@ -5,7 +5,6 @@ import {
     IconHome,
     IconTerminal2,
 } from "@tabler/icons-react";
-import theme from "tailwindcss/defaultTheme";
 import {useTheme} from "next-themes";
 import {siteConfig} from "@/config/site";
 
