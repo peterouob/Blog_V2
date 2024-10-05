@@ -27,7 +27,7 @@ export default async function PostPage({params}:PostPageProps) {
     return (
         <>
             <AuroraBackground>
-                <article className="container py-10 prose dark:prose-invert lg:max-w-[60vw] mx-auto dark:bg-zinc-100/10 lg:mt-10 lg:rounded-2xl mb-10 bg-zinc-50 shadow-2xl">
+                <article className="z-40 container py-10 prose dark:prose-invert lg:max-w-[60vw] mx-auto dark:bg-zinc-100/10 lg:mt-10 lg:rounded-2xl lg:mb-10 bg-zinc-700/10 shadow-2xl">
                     <h1 className="mb-2 lg:text-5xl">{post.title}</h1>
                     <div className="flex gap-4 m-3 lg:mt-10">
                         {post.tags?.map((tag) => (
