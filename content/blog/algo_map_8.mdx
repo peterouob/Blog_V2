@@ -1,0 +1,515 @@
+---
+title: Algo_8_BinaryTree
+description: 學習算法
+date: 2024-10-8
+tags: ["code","c++","algo"]
+---
+
+## 構建BinaryTree
+
+- 靜態版二叉樹
+  - 時間複雜度為O(m),空間複雜度為O(n),因為使用了長度為m的遞歸棧
+
+```c++
+#include <bits/stdc++.h>
+using namespace std;
+
+const int N = 100005;
+
+struct Node {
+    char value;
+    int lson;
+    int rson;
+} tree[N]; // tree[0]不用表示空節點
+
+int n = 1; // 記錄節點位置
+int newNode(char val)
+{
+    tree[n].value = val;
+    tree[n].lson = 0;
+    tree[n].rson = 0;
+    return n++;
+}
+
+void insert(int &father, int child, int l_r)
+{
+    l_r == 0 ? tree[father].lson = child : tree[father].rson = child;
+}
+
+int dfn[N] = {0};
+int dfn_timer = 0;
+void dfn_order(int father)
+{
+    if (father != 0)
+    {
+        dfn[father] = ++dfn_timer;
+        printf("dfn[%c].value=%d ", tree[father].value, dfn[father]);
+        dfn_order(tree[father].lson);
+        dfn_order(tree[father].rson);
+    }
+}
+
+int visit_time=0;
+void visit_order(int father){
+    if(father != 0){
+        printf("visit[%c]=%d ",tree[father].value,++visit_time);
+        visit_order(tree[father].lson);
+        visit_order(tree[father].rson);
+        printf("visit[%c]=%d ",tree[father].value,++visit_time);
+    }
+}
+
+int deep[N] = {0};
+int deep_timer = 0;
+void deep_child(int father){
+    if(father != 0){
+        deep[father] = ++deep_timer;
+        printf("deep[%c]=%d ",tree[father].value,deep[father]);
+        deep_child(tree[father].lson);
+        deep_child(tree[father].rson);
+        --deep_timer;
+    }
+}
+
+int num[N] = {0};
+int num_node(int father){
+    if(father == 0) return 0;
+    else{
+        num[father] = num_node(tree[father].lson)+ num_node(tree[father].rson) + 1;
+        printf("num[%c]=%d ",tree[father].value,num[father]);
+        return num[father];
+    }
+}
+
+void pre_order(int father){
+    if(father != 0) {
+        cout << tree[father].value;
+        pre_order(tree[father].lson);
+        pre_order(tree[father].rson);
+    }
+}
+
+void in_order(int father){
+    if(father != 0) {
+        in_order(tree[father].lson);
+        cout << tree[father].value;
+        in_order(tree[father].rson);
+    }
+}
+
+void post_order(int father){
+    if(father != 0) {
+        post_order(tree[father].lson);
+        post_order(tree[father].rson);
+        cout << tree[father].value;
+    }
+}
+
+int build_tree(){
+    int A = newNode('A');int B = newNode('B');int C = newNode('C');
+    int D = newNode('D');int E = newNode('E');int F = newNode('F');
+    int G = newNode('G');int H = newNode('H');int I = newNode('I');
+
+    insert(E,B,0);
+    insert(E,G,1);
+    insert(B,A,0);
+    insert(B,D,1);
+    insert(G,F,0);
+    insert(G,I,1);
+    insert(D,C,0);
+    insert(I,H,0);
+    int root = E;
+    return root;
+}
+
+int main(){
+    int root = build_tree();
+    cout << "dfn order: "; dfn_order(root);cout << endl;
+    cout << "visit order: ";  visit_order(root);cout << endl;
+    cout << "deep child: " ; deep_child(root);cout << endl;
+    cout << "num of tree: " <<  num_node(root) << endl;
+    cout << "in order: " ; in_order(root);cout << endl;
+    cout << "pre order: " ; pre_order(root);cout << endl;
+    cout << "post order: ";post_order(root);cout << endl;
+    return 0;
+}
+```
+
+## Leetcode 226
+
+- tree的題目大部分都可以直接用dfs完成
+
+```c++
+class Solution {
+public:
+    TreeNode* invertTree(TreeNode* root) {
+        if(!root)return 0;
+        TreeNode* tmp = root->left;
+        root->left = root->right;
+        root->right = tmp;
+        if(root->left) invertTree(root->left);
+        if(root->right) invertTree(root->right);
+        return root;
+    }
+};
+```
+
+## Leetcode 104
+
+```c++
+class Solution {
+public:
+    int maxDepth(TreeNode* root) {
+        if(!root) return 0;
+        int maxL = maxDepth(root->left);
+        int maxR = maxDepth(root->right);
+        return max(maxL,maxR)+1;
+    }
+};
+```
+
+## Leetcode 110
+
+- 是否平衡為最後節點個數為深度
+
+```c++
+class Solution {
+public:
+    int check(TreeNode* root){
+        if(!root) return 0;
+       int l = check(root->left);
+       int r = check(root->right);
+       if(l == -1 || r == -1 || abs(l-r) > 1) return -1;
+       return max(l,r)+1;
+    }
+    bool isBalanced(TreeNode* root) {
+        if(!root) return true;
+        return check(root) == -1 ? false : true;
+    }
+};
+```
+
+## Leetcode 543
+
+```c++
+class Solution {
+public:
+    int check(TreeNode* root){
+        if(!root) return 0;
+       int l = check(root->left);
+       int r = check(root->right);
+       if(l == -1 || r == -1 || abs(l-r) > 1) return -1;
+       return max(l,r)+1;
+    }
+    bool isBalanced(TreeNode* root) {
+        if(!root) return true;
+        return check(root) == -1 ? false : true;
+    }
+};
+```
+
+## Leetcode 100
+
+- 是否相同檢查節點值就好,如果一方null另一方還沒，代表不一樣，同時都為null則遍歷結束
+
+```c++
+class Solution {
+public:
+    bool isSameTree(TreeNode* p, TreeNode* q) {
+        if(!p && !q) return true;
+        if(!p || !q) return false;
+        if(p->val != q->val) return false;
+        return isSameTree(p->left,q->left) && isSameTree(p->right,q->right);
+    }
+};
+```
+
+## Leetcode 101
+
+- 對稱樹將原本root拆成左son和右son,將他們當成兩棵樹後再遍歷
+
+```c++
+class Solution {
+public:
+    bool check(TreeNode* n1,TreeNode* n2){
+        if(!n1 && !n2 ) return true;
+        if(!n1 || !n2) return false;
+        return n1->val == n2->val && check(n1->left, n2->right) && check(n1->right,n2->left);
+    }
+    bool isSymmetric(TreeNode* root) {
+        return check(root->left,root->right);
+    }
+};
+```
+
+## Leetcode 112
+
+```c++
+class Solution {
+public:
+    bool check(TreeNode* root,int target,int sum){
+        if(!root) return false;
+        sum += root->val;
+        if(!root->left && !root->right){
+            return sum == target;
+        }
+        bool l = check(root->left,target,sum);
+        bool r = check(root->right,target,sum);
+        return l || r;
+    }
+    bool hasPathSum(TreeNode* root, int targetSum) {
+        if(!root) return false;
+            int sum = 0;
+        return check(root,targetSum,sum);
+    }
+};
+```
+
+## Leetcode 572
+
+- 在check的時候，同時check一邊就行，再用AND判斷
+
+```c++
+class Solution {
+public:
+    bool check(TreeNode* node,TreeNode* subRoot){
+        if(node == NULL && subRoot == NULL) return true;
+        if(!node || !subRoot) return false;
+        if(node->val != subRoot->val) return false;
+        return check(node->left,subRoot->left) && check(node->right,subRoot->right);
+    }
+    bool isSubtree(TreeNode* root, TreeNode* subRoot) {
+        if(!subRoot) return true;
+        if(!root) return false;
+        if(check(root, subRoot)) return true;
+        return isSubtree(root->left, subRoot) || isSubtree(root->right, subRoot);
+    }
+};
+```
+
+## Leetcode 102
+
+- 遍歷節點的時候將樹扁平化成1維陣列,扁平化的方法則用BFS遍歷樹
+
+```c++
+class Solution {
+public:
+    vector<vector<int>> levelOrder(TreeNode* root) {
+        vector<vector<int>> res;
+        if(!root) return res;
+        queue<TreeNode* > q;
+        q.push(root);
+        while(!q.empty()){
+            int n = q.size();
+            vector<int> path;
+            for(int i =0;i<n;i++){
+                TreeNode* node = q.front();
+                q.pop();
+                if(node -> left != nullptr) q.push(node->left);
+                if(node -> right != nullptr) q.push(node->right);
+                path.push_back(node->val);
+            }
+            res.push_back(path);       
+        }
+        return res;       
+    }
+};
+```
+
+## Leetcode 230
+
+- 將樹扁平化成1D陣列後，排序找到第k小的值
+
+```c++
+class Solution {
+public:
+    int kthSmallest(TreeNode* root, int k) {
+        vector<int> vc;
+        queue<TreeNode*> q;
+        q.push(root);
+        while(!q.empty()){
+            int n = q.size();
+            for(int i=0;i<n;i++){
+                TreeNode* node = q.front();
+                q.pop();
+                if(node->left != nullptr) q.push(node->left);
+                if(node->right != nullptr) q.push(node->right);
+                vc.push_back(node->val);
+            }
+        }
+        sort(vc.begin(),vc.end());
+        return vc[k-1];        
+    }
+};
+```
+
+## Leetcode 530
+
+- 尋找Node中的最小數中先扁平化成1D陣列後,用tow pointer的方式尋找在2 nodes中的最小值
+
+```c++
+class Solution {
+public:
+    int getMinimumDifference(TreeNode* root) {
+        vector<int> vc;
+        queue<TreeNode*> q;
+        q.push(root);
+        while(!q.empty()){
+            int n = q.size();
+            for(int i = 0;i<n;i++){
+                TreeNode* node = q.front();
+                q.pop();
+                if(node->left != nullptr) q.push(node->left);
+                if(node->right != nullptr) q.push(node->right);
+                vc.push_back(node->val);
+            }
+        }
+        sort(vc.begin(),vc.end());
+        int i =0;
+        int j =1;
+        int ans = INT_MAX;
+        while(i < j && j != vc.size()) {
+            ans = min(ans,abs(vc[i]-vc[j]));
+            i++;
+            j++;
+        }
+        return ans;
+    }
+};
+```
+
+## Leetcode 98
+
+- 判斷是符合合題目的二叉搜索樹(BST)
+  - 題目要求：
+    - The left subtree of a node contains only nodes with keys less than the node's key.
+    - The right subtree of a node contains only nodes with keys greater than the node's key.
+    - Both the left and right subtrees must also be binary search trees.
+
+### 第一種拆判斷值後做中序遍歷
+
+```c++
+class Solution {
+public:
+    bool slove(TreeNode* root,long small,long big){
+        if(root == nullptr )return true;
+        if(root->val <= small || root->val >= big) return false;
+        return slove(root->left,small,root->val) && slove(root->right,root->val,big);
+    }
+    bool isValidBST(TreeNode* root) {
+        if(!root) return true;
+        return slove(root,LONG_MIN,LONG_MAX);
+    }
+};
+```
+
+### 第二種使用stack做中序遍歷
+
+```c++
+class Solution {
+public:
+    bool isValidBST(TreeNode* root) {
+        stack<TreeNode*> q;
+        TreeNode* prev = nullptr;
+        while(root != nullptr || !q.empty()){
+            while(root != nullptr){
+                q.push(root);
+                root = root->left;
+            }
+            root = q.top();
+            q.pop();
+            if(prev != nullptr && root->val <= prev->val)return false;
+            prev = root;
+            root = root->right;
+        }
+        return true;
+    }
+};
+```
+
+## Leetcode 235
+
+- 在BST(二叉搜索樹)上找尋LCA(公共祖先)
+- 將root拆成左右子樹，後尋找符合條件的
+  1.右邊一定要大於root
+  2.左邊一定要小於root
+
+```c++
+class Solution {
+public:
+    TreeNode* lowestCommonAncestor(TreeNode* root, TreeNode* p, TreeNode* q) {
+        if(!root) return root;
+        if(p->val > root->val && q->val > root->val) return lowestCommonAncestor(root->right,p,q);
+        if(p->val < root->val && q->val < root->val) return lowestCommonAncestor(root->left,p,q);
+        return root;
+    }
+};
+```
+
+## Leetcode 208
+
+- Trie樹
+
+```c++
+
+// 初始化Trie樹的Node,children用來存字母index(a->0,z->25)
+class TrieNode {
+    public:
+    TrieNode* children[26];
+    bool isEnd;
+    TrieNode(){
+        isEnd = false;
+        for(int i =0;i<26;i++){
+            children[i] = nullptr;
+        }
+    }
+};
+
+class Trie {
+public:
+    TrieNode* root;
+    Trie() {
+        root = new TrieNode();
+    }
+
+// 插入時如果沒有對應的值時(存word的index)，建立一個新的節點
+    void insert(string word) {
+        TrieNode* node = root;
+        for(char w : word) {
+            int index = w - 'a';
+            if(node->children[index] == nullptr) node->children[index] = new TrieNode();
+            node = node->children[index];
+        }
+        node->isEnd = true;
+    }
+// 查找不斷往tree上的node找，值到遍歷完tree
+    bool search(string word) {
+        TrieNode* node = root;
+        for(char w : word ){
+            int index = w - 'a';
+            if(node->children[index] == nullptr) return false;
+            node = node->children[index];
+        }
+        return node->isEnd;
+    }
+// 只要有查找到需要的值就結束，不用遍歷完tree
+    bool startsWith(string prefix) {
+        TrieNode* node = root;
+        for(char p : prefix) {
+            int index = p -'a';
+            if(node->children[index] == nullptr) return false;
+            node = node->children[index];
+        }
+        return true;
+    }
+};
+
+/**
+ * Your Trie object will be instantiated and called as such:
+ * Trie* obj = new Trie();
+ * obj->insert(word);
+ * bool param_2 = obj->search(word);
+ * bool param_3 = obj->startsWith(prefix);
+ */
+```
+

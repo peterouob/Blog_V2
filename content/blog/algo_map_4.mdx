@@ -154,3 +154,27 @@ public:
  * int param_4 = obj->getMin();
  */
 ```
+
+## Leetcode 921
+
+- 因為只有` ( 能和 ) `結合，因此判斷`(`就好，如果可以的話就pop出stack，不行則push
+
+```c++
+class Solution {
+public:
+    int minAddToMakeValid(string s) {
+        stack<char> st;
+        int count = 0;
+        for(char str : s) {
+            if(st.empty()){
+                st.push(str);
+            }else if(st.top() == '(' && str == ')'){
+                st.pop();
+            }else{
+                st.push(str);
+            }
+        }
+        return st.size();
+    }
+};
+```
