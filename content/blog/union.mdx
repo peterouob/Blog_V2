@@ -123,3 +123,204 @@ int main(){
     }
 }
 ```
+
+## 帶權并查集
+
+- 路徑壓縮
+  - `d[1]' = d[1]+d[2]+d[3]`
+- 先用t紀錄x的父節點，在遞迴過程中最後返回的是根節點，最後再將當前節點的權重加上原父節點的權重
+  - 經過遞迴，此時父節點也指向根節點，父節點權重已經更新為父節點直接到根節點權重
+
+```c++
+int find_set(int x){
+  if(x != s[x]){
+    int t = s[x];
+    s[x] = find_set(s[x]);
+    d[x] += d[t];
+  }
+  return s[x];
+}
+```
+
+- 合併
+  - 把點x和點y合併，就是將x的根節點fx合併到y的根節點fy，在fx和fy之間增加權重
+
+## hdu3038
+
+```c++
+#include <iostream>
+using namespace std;
+
+const int N = 200010;
+
+int s[N];
+int d[N];
+
+void init_set(int n){
+    for(int i=0; i<= n;i++) {s[i]=i;d[i]=0;};
+}
+
+int find_set(int x){
+    if(x != s[x]){
+        int t = s[x];
+        s[x] = find_set(s[x]);
+        d[x] += d[t];
+    }
+    return s[x];
+}
+
+void mearge_set(int a,int b,int v,int&ans){
+    int roota = find_set(a);
+    int rootb = find_set(b);
+    if(roota == rootb) {
+        if(d[a]-d[b] != v) ans++; 
+    }else{
+        s[roota]=rootb;
+        d[roota]=d[b]-d[a]+v;
+    }
+}
+
+int main(){
+    ios::sync_with_stdio(0);
+    cin.tie(0);
+    cout.tie(0);
+    int n,m;
+    while(scanf("%d%d",&n,&m) != EOF){
+        init_set(n);
+        int ans=0;
+        while(m--){
+            int a,b,v;
+            scanf("%d%d%d",&a,&b,&v);
+            a--;
+            mearge_set(a,b,v,ans);
+        }
+        printf("%d\n",ans);
+    }
+}
+```
+
+## poj1182
+
+- 路徑壓縮更新權重規律
+  - 0表示同類,1表示吃,2表示被吃
+  - `d(a->b)=1 d(b->c)=1 d(a->c)=2`
+  - `d(a->b)=2 d(b->c)=2 d(a->c)=1`
+  - `d(a->b)=0 d(b->c)=1 d(a->c)=1`
+- 由規律可發覺`d(a->c)=(d(a->b)+d(b->c))%3`
+
+- relation-1是為了讓區間限制在[0,1,2]，因為我們有取mod操作
+
+### cin會超時
+
+```c++
+#include <iostream>
+#include <stdio.h>
+using namespace std;
+const int N = 50005;
+
+int s[N];
+int d[N];
+int ans;
+void init_set(int n){
+    for(int i=0;i<=n;i++){
+        s[i]=i;
+        d[i]=0;
+    }
+}
+
+int find_set(int x){
+    if(x != s[x]){
+        int t = s[x];
+        s[x] = find_set(s[x]);
+        d[x] = (d[x]+d[t])%3;
+    }
+    return s[x];
+}
+
+void merage_set(int x,int y,int relation){
+    int roota = find_set(x);
+    int rootb = find_set(y);
+    if(roota==rootb){
+        if((relation-1)!=((d[x]-d[y]+3)%3))ans++;
+    }else{
+        s[roota]=rootb;
+        d[roota]=(d[y]-d[x]+relation-1)%3;
+    }
+}
+
+int main(){
+    ios::sync_with_stdio(0);
+    int n,k;scanf("%d%d",&n,&k);
+    init_set(n);
+    ans=0;
+    while(k--){
+        int relation,x,y;scanf("%d%d%d",&relation,&x,&y);
+        if(x>n || y>n || (relation==2&&x==y))ans++;
+        else merage_set(x,y,relation);
+    }
+    printf("%d",ans);
+    return 0;
+}
+```
+
+## poj2236
+
+- 從0開始所以要減1
+
+```c++
+#include <iostream>
+using namespace std;
+
+const int N = 1050;
+int s[N];
+int x[N];
+int y[N];
+bool m[N];
+int r[N];
+
+int find_set(int x){
+    if(x != s[x]) s[x] = find_set(s[x]);
+    return s[x];
+}
+
+void merage(int a,int b){
+    int roota = find_set(a);
+    int rootb = find_set(b);
+    if(roota != rootb) s[roota] = rootb;
+}
+
+int dis(int a,int b){
+    return (((x[a] - x[b]) * (x[a] - x[b]))+((y[a] - y[b]) * (y[a] - y[b])));
+}
+
+int main()
+{
+    int n, d;
+    cin >> n >> d;
+    for(int i=1;i<=n;i++){
+        cin >> x[i-1] >> y[i-1];
+        s[i] = i;
+        m[i] = false;
+    }
+    char c;
+    int p;
+    int idx=0;
+    while(cin >> c){
+        if(c == 'O'){
+            cin >> p;
+            p--;
+            r[idx++] = p;
+            for(int i=0;i<idx;i++){
+                if(dis(r[i],p) <= d*d) merage(r[i],p);
+            }
+        }else if(c =='S'){
+            int l=0,r=0;
+            cin >> l >> r;
+            l--;r--;
+            int rootl = find_set(l);
+            int rootr = find_set(r);
+            rootl == rootr ? cout << "SUCCESS" << '\n' : cout << "FAIL" << '\n';
+        }
+    }
+}
+```
