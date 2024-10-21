@@ -485,3 +485,91 @@ int main(){
   return 0;
 }
 ```
+
+## ACM109
+
+- isTreeAfterRemove判斷有邊的情況，之所以先判斷vc[0]是由於放入vc是倒敘的緣故
+- 在紀錄邊的時候i從n-1是題目要求從做後一個刪
+
+```c++
+#include <iostream>
+#include <vector>
+using namespace std;
+
+int n =0;
+vector<int>s(1001,0);
+
+void init_set(){
+  for(int i=1;i<=n;i++)s[i]=i;
+}
+
+int find_set(int x){
+  if(x != s[x]) s[x] = find_set(s[x]);
+  return s[x];
+}
+
+void join(int x,int y){
+  int rootx = find_set(x);
+  int rooty = find_set(y);
+  if(rootx != rooty) s[rootx] = rooty;
+}
+
+bool isTreeAfterRemove(vector<vector<int>>&edges,int deleteEdge){
+  init_set();
+  for(int i=0;i<n;i++){
+      if(i == deleteEdge) continue;
+      if(find_set(edges[i][0]) == find_set(edges[i][1])){
+        return false;
+      }else{
+        join(edges[i][0],edges[i][1]);
+    }
+  }
+  return true;
+}
+
+void getRemoveEdge(vector<vector<int>>&edges){
+  init_set();
+  for(int i=0;i<n;i++){
+    if(find_set(edges[i][0]) == find_set(edges[i][1])){
+      cout << edges[i][0] << " " << edges[i][1];
+      return;
+    }else{
+      join(edges[i][0], edges[i][1]);
+    }
+  }
+}
+
+int main(){
+  vector<vector<int>> edges;
+  cin >> n;
+
+  vector<int>isDrgee(n+1,0);
+  for(int i=0;i<n;i++){
+    int s,t;cin >> s >> t;
+    // 紀錄節點
+    edges.push_back({s,t});
+    // 紀錄邊為2的節點
+    isDrgee[t]++;
+  }
+  vector<int> vc;
+  //紀錄邊為2的入vc等刪除
+  for(int i=n-1;i >=0;i--){
+    if(isDrgee[edges[i][1]]== 2){
+      vc.push_back(i);
+    }
+  }
+
+  // 邊為2的要判斷刪除後是否還是樹
+  if(vc.size() > 0){
+    if(isTreeAfterRemove(edges,vc[0])){
+      cout << edges[vc[0]][0] << " " << edges[vc[0]][1];
+    }else{
+      cout << edges[vc[1]][0] << " " << edges[vc[1]][1];
+    }
+    return 0;
+  }
+
+  // 沒有邊為2的必定有有向環，處理有向環即可返回
+  getRemoveEdge(edges);
+}
+```
