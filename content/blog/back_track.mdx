@@ -2,7 +2,7 @@
 title: BackTrack
 description: 學習算法
 date: 2024-7-10
-tags: ["code","c++","algo"]
+tags: ["code", "c++", "algo"]
 ---
 
 ## Backtrack
@@ -107,4 +107,37 @@ public:
         return result;
     }
 };
+```
+
+## Leetcode1593
+
+```c++
+// @leet start
+#include <string>
+#include <unordered_set>
+using namespace std;
+class Solution {
+public:
+
+    int dfs(int start,string &s,unordered_set<string>&us){
+    int maxSpliteSize = 0;
+    if(start == s.size()){
+      return -1;
+    }
+    for(int i=start+1;i<=s.size();i++){
+      string subString = s.substr(start,i-start);
+      if(us.find(subString) == us.end()){
+        us.insert(subString);
+        maxSpliteSize = max(maxSpliteSize,1+dfs(i,s,us));
+        us.erase(subString);
+      }
+    }
+    return maxSpliteSize;
+  }
+    int maxUniqueSplit(string s) {
+    unordered_set<string> us;
+    return dfs(0,s,us);
+  }
+};
+// @leet end
 ```
