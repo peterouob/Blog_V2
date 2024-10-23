@@ -2,7 +2,7 @@
 title: Algo_8_BinaryTree
 description: 學習算法
 date: 2024-10-8
-tags: ["code","c++","algo"]
+tags: ["code", "c++", "algo"]
 ---
 
 ## 構建BinaryTree
@@ -309,9 +309,9 @@ public:
                 if(node -> right != nullptr) q.push(node->right);
                 path.push_back(node->val);
             }
-            res.push_back(path);       
+            res.push_back(path);
         }
-        return res;       
+        return res;
     }
 };
 ```
@@ -338,7 +338,7 @@ public:
             }
         }
         sort(vc.begin(),vc.end());
-        return vc[k-1];        
+        return vc[k-1];
     }
 };
 ```
@@ -430,9 +430,7 @@ public:
 ## Leetcode 235
 
 - 在BST(二叉搜索樹)上找尋LCA(公共祖先)
-- 將root拆成左右子樹，後尋找符合條件的
-  1.右邊一定要大於root
-  2.左邊一定要小於root
+- 將root拆成左右子樹，後尋找符合條件的1.右邊一定要大於root 2.左邊一定要小於root
 
 ```c++
 class Solution {
@@ -511,4 +509,93 @@ public:
  * bool param_2 = obj->search(word);
  * bool param_3 = obj->startsWith(prefix);
  */
+```
+
+## Leetcode 2583
+
+- 使用BFS紀錄每一次的sum，并且preiority_queue使用大到小排列，超過題目要求的k時做pop
+
+```c++
+class Solution {
+public:
+    long long kthLargestLevelSum(TreeNode* root, int k) {
+        priority_queue<long long, vector<long long>, greater<>> pq;
+        queue<TreeNode*> q;
+        q.push(root);
+        while(!q.empty()){
+            int n = q.size();
+            long long sum = 0;
+            for(int i=0;i<n;i++){
+                TreeNode* node = q.front();
+                q.pop();
+                sum += node->val;
+                if(node->left != nullptr) q.push(node->left);
+                if(node->right != nullptr) q.push(node->right);
+            }
+            pq.push(sum);
+            if(pq.size() > k) pq.pop();
+        }
+        return pq.size() < k ?  -1 : pq.top();
+    }
+};
+```
+
+## Leetcode 2641
+
+- 第一次BFS先計算當前level的總和
+- 第二次BFS計算這一層node的總和減去同個parent中node的總和
+
+```c++
+class Solution {
+public:
+    TreeNode* replaceValueInTree(TreeNode* root) {
+        if(root == nullptr) return nullptr;
+        queue<TreeNode*> q;
+        q.push(root);
+        vector<int> sum_;
+        sum_.push_back(root->val);
+        while(!q.empty()){
+            int n = q.size();
+            int sum = 0;
+            for(int i=0;i<n;i++){
+                TreeNode* node = q.front();
+                q.pop();
+                if(node->left) {
+                    sum += node->left->val;
+                    q.push(node->left);
+                }
+                if(node->right){
+                    sum += node->right->val;
+                    q.push(node->right);
+                }
+            }
+            sum_.push_back(sum);
+        }
+
+        // for(auto v : sum_)cout << v << endl;
+
+        // twice bfs
+        q.push(root);
+        int level = 0;
+        while(!q.empty()){
+            int n = q.size();
+            for(int i = 0;i<n;i++){
+                TreeNode* node = q.front();
+                q.pop();
+                int leftAndRight = (node->left?node->left->val:0)+(node->right?node->right->val:0);
+                if(node->left){
+                    node->left->val = leftAndRight;
+                    q.push(node->left);
+                }
+                if(node->right){
+                    node->right->val = leftAndRight;
+                    q.push(node->right);
+                }
+                node->val = sum_[level] - node->val;
+            }
+            level++;
+        }
+        return root;
+    }
+};
 ```

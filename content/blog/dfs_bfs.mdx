@@ -327,3 +327,62 @@ public:
 };
 // @lc code=end
 ```
+
+### Leetcode 1284
+
+- 使用枚舉搭配dfs
+- 枚舉的時候對1做XOR以達到1翻成0,0翻成1
+- 在dfs中使用backtrack要返回初始狀態，必需要再翻一次
+
+```c++
+class Solution {
+public:
+    int num = 1e9;
+    void convert(int m,int n,vector<vector<int>>&mat,int x,int y){
+        vector<pair<int,int>>dict={
+            {0,0},
+            {0,1},
+            {0,-1},
+            {1,0},
+            {-1,0}
+        };
+        for(auto [dx,dy]:dict){
+            int nx = x + dx;
+            int ny = y + dy;
+            if(nx >= 0 && nx < m && ny >=0 && ny < n){
+                mat[nx][ny] ^= 1;
+            }
+        }
+    }
+    void dfs(int m,int n,vector<vector<int>>&mat,int pos,int cnt){
+        if(pos == m*n){
+            bool flag = true;
+            for(int i=0;i<m;i++){
+                for(int j=0;j<n;j++){
+                    if(mat[i][j] != 0) flag = false;
+                }
+            }
+            if(flag) num = min(num,cnt);
+            return ;
+        }
+        int x = pos / n;
+        int y = pos % n;
+
+        // 沒有翻牌的情況
+        dfs(m,n,mat,pos+1,cnt);
+
+        // 有翻牌的情況, backtrack要回覆初始狀態
+        convert(m,n,mat,x,y);
+        dfs(m,n,mat,pos+1,cnt+1);
+        convert(m,n,mat,x,y);
+    }
+
+    int minFlips(vector<vector<int>>& mat) {
+        int m = mat.size();
+        int n = mat[0].size();
+        int cnt = 0;
+        dfs(m,n,mat,0,cnt);
+        return num == 1e9 ? -1 : num ;
+    }
+};
+```

@@ -144,3 +144,44 @@ int main()
     }
 }
 ```
+
+## 3.poj3278
+
+- dis[now]+1代表從現在節點移動到下一個節點的最短距離，下一個節點有可能是dis[now+1]/dis[now-1]/dis[now*2]
+- 如果說是小於的話，就跟新值
+
+```c++
+#include <iostream>
+#include <queue>
+#include <string.h>
+using namespace std;
+
+const int maxn = 100000;
+int n,k,dis[maxn+1],now;
+queue<int> q;
+
+int main(){
+    while(cin >> n >> k){
+        memset(dis,0x3f,sizeof(dis));
+        q.push(n);
+        dis[n] = 0;
+        while(q.size()){
+            now = q.front();
+            q.pop();
+            if(now + 1 <= maxn && dis[now]+1 < dis[now+1]){
+                q.push(now+1);
+                dis[now+1] = dis[now]+1;
+            }
+            if(now-1 >= 0 && dis[now]+1 < dis[now-1]){
+                q.push(now-1);
+                dis[now-1] = dis[now]+1;
+            }
+            if(now*2 <= maxn && dis[now]+1 < dis[now*2]){
+                q.push(now*2);
+                dis[now*2] = dis[now]+1;
+            }
+        }
+        cout << dis[k] << '\n';
+    }
+}
+```
