@@ -6,7 +6,7 @@ import {Tag} from "@/components/Tags";
 import {PostItem} from "@/components/PostItem";
 import {Aurora} from "@/components/Aur";
 
-const POST_PRE_PAGE = 3
+const POST_PRE_PAGE = 6
 
 interface BlogPageProps {
     searchParams:{
@@ -27,7 +27,7 @@ export default async function BlogPage({searchParams}:BlogPageProps){
     const sortedTags = sortTagsByCount(tags)
     return (
         <Aurora>
-        <div className="container lg:py-10 dark:bg-zinc-700/10 bg-zinc-50 shadow-2xl rounded-lg mt-10 lg:mb-10 z-40">
+        <div className="container lg:py-10 dark:bg-zinc-700/10 bg-zinc-50 shadow-2xl rounded-lg lg:mb-10 z-40">
             <div className="hidden lg:grid  flex-col items-start gap-4 md:flex-row md:justify-between md:gap-8">
                 <div className="flex-1 space-y-4">
                     <h1 className="inline-block font-black text-4xl lg:text-5xl dark:text-zinc-50">Blog</h1>

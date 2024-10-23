@@ -5,7 +5,6 @@ import {Tag} from "@/components/Tags";
 import {slug} from "github-slugger";
 import {Metadata} from "next";
 import {PostItem} from "@/components/PostItem";
-import {AuroraBackground} from "@/components/Aurora";
 
 interface  TagPagesProps {
     params: {
@@ -34,8 +33,6 @@ export default function TagPages({params} : TagPagesProps) {
     const sortedTags = sortTagsByCount(tags)
 
     return (
-
-        <AuroraBackground>
             <div className="container lg:py-10 dark:bg-zinc-700/10 bg-zinc-50 shadow-2xl rounded-lg z-40 lg:mt-10 ">
                 <div className=" lg:grid  flex-col items-start gap-4 md:flex-row md:justify-between md:gap-8">
                     <div className="flex-1 space-y-4">
@@ -74,6 +71,5 @@ export default function TagPages({params} : TagPagesProps) {
 
                 </div>
             </div>
-        </AuroraBackground>
     )
 }

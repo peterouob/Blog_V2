@@ -1,6 +1,5 @@
 "use client"
 
-import {FloatingDockDemo} from "@/components/DockDemo";
 import {CardPost} from "@/components/CardPost";
 import React from "react";
 
@@ -15,9 +14,6 @@ export function Hero(){
                     Here is to record my life
                 </div>
             </div>
-
-            <FloatingDockDemo />
-
             <CardPost />
         </>
     )

@@ -5,7 +5,6 @@ import {AuroraBackgroundPage} from "@/components/AuroraBackgroundDemo";
 
 export default async function AboutPage(){
     return (
-        <AuroraBackgroundPage>
             <div className="container max-w-6xl py-6 lg:py-10">
                 <div className="flex flex-col items-start gap-4 md:flex-row md:justify-between md:gap-8">
                     <div className="flex-1 space-x-4">
@@ -39,6 +38,5 @@ export default async function AboutPage(){
                     <AboutContent className="prose dark:prose-invert lg:flex gap-2 flex-wrap hidden overflow-hidden" />
                 </div>
             </div>
-        </AuroraBackgroundPage>
     )
 }

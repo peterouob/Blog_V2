@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { FloatingNavComponent } from "@/components/Nav"
 import {Providers} from "@/components/Providers";
 import {SiteFooter} from "@/components/Fotter";
 import {MobileNav} from "@/components/MobileNav";
@@ -28,9 +27,7 @@ export default function RootLayout({
         <MobileNav/>
 
         <div>
-            {/*<NavbarDemo />*/}
             <PageHeader />
-            <FloatingNavComponent />
             <main>
                 {children}
             </main>

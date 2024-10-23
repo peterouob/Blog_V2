@@ -4,7 +4,6 @@ import {MDXContent} from "@/components/MdxComponents";
 
 import "@/styles/mdx.css"
 import {Tag} from "@/components/Tags";
-import {AuroraBackground} from "@/components/Aurora";
 
 interface PostPageProps {
     params: {
@@ -26,8 +25,7 @@ export default async function PostPage({params}:PostPageProps) {
     }
     return (
         <>
-            <AuroraBackground>
-                <article className="z-40 container py-10 prose dark:prose-invert lg:max-w-[60vw] mx-auto dark:bg-zinc-100/10 lg:mt-10 lg:rounded-2xl lg:mb-10 bg-zinc-700/10 shadow-2xl">
+                <article className="z-40 container py-10 prose dark:prose-invert lg:max-w-[60vw] mx-auto dark:bg-zinc-100/10 lg:mt-10 lg:rounded-2xl lg:mb-10">
                     <h1 className="mb-2 lg:text-5xl">{post.title}</h1>
                     <div className="flex gap-4 m-3 lg:mt-10">
                         {post.tags?.map((tag) => (
@@ -40,7 +38,6 @@ export default async function PostPage({params}:PostPageProps) {
                     <hr className="my-4" />
                     <MDXContent code={post.body} />
                 </article>
-            </AuroraBackground>
         </>
 
     );
