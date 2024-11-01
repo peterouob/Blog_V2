@@ -1,0 +1,123 @@
+---
+title: 紀錄車載資安筆記
+description: 紀錄演講
+date: 2024-11-01
+tags: ["network"]
+---
+
+## 晶片資安標準的現況與未來發展趨勢
+
+### 前言
+
+- 如何驗證晶片在車載上安全
+- 晶片安全才能保證軟體和系統安全
+
+## Background
+
+- Chip Security Stanards In 2022
+  1. Chip Security Stanard
+  - pre-silicon avoid designs containing suspicious cicuits(硬體木馬)
+  - post-silicon avoid fault injection
+  2. System Software Security Stanard
+
+### Attacks
+
+1. Side Channel Attacks (旁通到攻擊)
+
+- 用探棒確認波型
+
+2. Fault injection（錯誤注入）
+
+- 注入電波時派確認是否被減弱引響
+
+## Introduction
+
+### Hardware Trojans in ICT devices
+
+- In the past
+  1. Hidden Malicious Software
+  2. Remote Control
+  3. System Backdoors
+- now
+  1. Weaponization of Civilian Technology Suppy Chains
+
+### Hardware supply chain attack
+
+- supply Security Risks if Chiplet
+  - Supply Chain Vulnerabilities
+
+### Chiplet Security Issues
+
+1. Traceability
+2. Man-in-the-Middle Attack
+
+## The Nature of Hardware Attacks
+
+- change the v or software can
+
+1. Soc
+1. Ram
+1. Rom
+1. Angin mod
+
+### Initial Attack Surface (PCB)
+
+### hardware Trojans
+
+1. Trigger/Payload (AND-XOR)
+
+### Types of Hardware Trojans
+
+1. Data Theft
+2. System Contril
+3. Damage Infiction
+4. Specification
+5. Design
+6. RTL
+
+## Invasive Attacks
+
+### Chip Decapsulation
+
+- using chemicals and mechanical tools Decapsulation Chip
+- Reverse Engineering
+
+## Non-Invasive Attacks
+
+1. Side-Channel
+
+- 使用探棒掃描長時間處於加密或解密,儲存電磁波用示波器分析繞過RSA解密
+- 分析硬體功能位址
+
+2. Fault injection
+
+- Attack Techniques
+  1. Random
+  2. Range
+  3. Fixed
+
+### Follow success
+
+1. broad parameter testing
+2. narow down
+3. Validate the reduced parameters
+
+### Challenge 6D
+
+1. Time
+2. Space
+3. Intensity
+4. Frequency
+5. Target
+6. Data
+
+### Challenge
+
+1. Encryption
+2. Starting Point
+3. Protection
+4. Challenges with Costly
+
+## Rowhammer Attack
+
+## Conclusions

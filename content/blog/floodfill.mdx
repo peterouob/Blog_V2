@@ -1,0 +1,231 @@
+---
+title: 洪水填充
+description: 學習算法
+date: 2024-11-01
+tags: ["code", "c++", "algo"]
+---
+
+## 洪水填充
+
+- 一種基本的搜索應用．一張圖上有多個區域,不同區域用不同區分,而同個區域皆為相同．找到種子點後從種子點出發．把種子點所屬的封閉區域用新方法填充.這就是洪水填充
+
+## hdu1312
+
+```c++
+#include <iostream>
+using namespace std;
+char mp[21][21];
+int n = 0;
+int m = 0;
+int cnt;
+void dfs(int row, int col)
+{
+    if (row < 0 || row >= n || col < 0 || col >= m || mp[row][col] == '#')
+        return;
+    cnt++;
+    mp[row][col] = '#';
+    dfs(row - 1, col);
+    dfs(row + 1, col);
+    dfs(row, col + 1);
+    dfs(row, col - 1);
+}
+
+int main()
+{
+    while (cin >> m >> n)
+    {
+        if (n == 0 && m == 0)
+            break;
+        for (int i = 0; i < n; i++)
+        {
+            for (int j = 0; j < m; j++)
+            {
+                cin >> mp[i][j];
+            }
+        }
+        cnt = 0;
+        for (int i = 0; i < n; i++)
+        {
+            for (int j = 0; j < m; j++)
+            {
+
+                if (mp[i][j] == '@')
+                    dfs(i, j);
+            }
+        }
+        cout << cnt << endl;
+    }
+}
+```
+
+## poj2227
+
+- 運用到最小堆的概念
+
+```c++
+#include <iostream>
+#include <queue>
+#include <cstring>
+
+#define ll long long
+using namespace std;
+
+const int N = 300 + 10;
+int mp[N][N];
+bool visits[N][N];
+int dict[4][2] = {{0,1},{0,-1},{1,0},{-1,0}};
+int n,m;
+
+struct nodes {
+    int _x;int _y;int _h;
+    friend bool operator < (nodes a,nodes b){
+        return  a._h > b._h;
+    }
+};
+
+priority_queue<nodes> pq;
+
+void init(){
+    while(!pq.empty()) pq.pop();
+    nodes node;
+    memset(visits,false,sizeof(visits));
+
+    for(int i=0;i<n;i++){
+        for(int j=0;j<m;j++){
+            // 從4周往內
+            if(i == 0 || j == 0 || i == n-1 || j == m-1){
+                visits[i][j] = true;
+                node._x = i;
+                node._y = j;
+                node._h = mp[i][j];
+                pq.push(node);
+            }
+        }
+    }
+}
+
+void bfs(){
+    init();
+    nodes node_;
+    ll a=0;
+    while(!pq.empty()){
+        nodes node = pq.top();
+        pq.pop();
+        for(int i=0;i<4;i++){
+            int nx = node._x + dict[i][0];
+            int ny = node._y + dict[i][1];
+            if(0 <= nx && nx < n && 0 <= ny&& ny < m && !visits[nx][ny]){
+                visits[nx][ny] = true;
+                node_._x = nx;
+                node_._y = ny;
+                node_._h = mp[nx][ny];
+                if(node_._h < node._h) {
+                    a += (node._h - node_._h);
+                    node_._h = node._h;
+                }
+                pq.push(node_);
+            }
+        }
+    }
+
+    cout << a << endl;
+}
+
+
+int main(){
+    while(cin >> m >> n){
+        for(int i=0;i<n;i++)
+            for(int j=0;j<m;j++)
+                cin >> mp[i][j];
+        bfs();
+    }
+}
+```
+
+## P1514
+
+```c++
+#include <iostream>
+#include <cstring>
+using namespace std;
+
+const int N = 500 + 10;
+
+int n=0,m=0;
+int current=0;
+
+int mp[N][N];
+bool visits[N][N];
+pair<int,int> range[N];
+
+int dict[4][2] = {{0,1},{1,0},{0,-1},{-1,0}};
+
+void dfs(int x,int y,bool isReachable){
+    visits[x][y] = true;
+    if(x == n-1 && isReachable){
+        range[current].first = min(range[current].first, y);
+        range[current].second = max(range[current].second, y);
+    }
+    for(int i=0;i<4;i++){
+        int nx = dict[i][0] + x;
+        int ny = dict[i][1] + y;
+        if(nx >= 0 && nx < n && ny >=0 && ny < m && !visits[nx][ny] && mp[x][y] > mp[nx][ny]){
+            dfs(nx,ny,isReachable);
+        }
+    }
+}
+
+
+void init(){
+    for (int i = 0; i < n; i++)
+    {
+        for (int j = 0; j < m; j++)
+        {
+            cin >> mp[i][j];
+        }
+    }
+}
+
+int main(){
+    while(cin >> n >> m ){
+        init();
+        for (int i = 0; i < m; i++)
+            dfs(0, i, false);
+        int un_reachable_cnt = 0;
+        for (int i = 0; i < m; i++)
+            if (!visits[n - 1][i])
+                un_reachable_cnt++;
+        if (un_reachable_cnt > 0)
+        {
+            cout << 0 << '\n'
+                << un_reachable_cnt;
+            return 0;
+        }
+
+        for(int i=0;i<m;i++){
+            memset(visits,false,sizeof(visits));
+            current = i;
+            range[current].first = 501;
+            if(n == 1)
+                dfs(0,i,true);
+            else if(mp[0][i] > mp[1][i])
+                dfs(1,i,true);
+        }
+
+        int maxRightBound;
+        current = -1;
+        while(current < m - 1){
+            maxRightBound = -1;
+            for(int i=0;i<m;i++){
+                if(range[i].first <= current+1 && range[i].second > maxRightBound)
+                    maxRightBound = range[i].second;
+            }
+            un_reachable_cnt++;
+            current = maxRightBound;
+        }
+
+        cout << 1 << '\n' << un_reachable_cnt;
+        return 0;
+    }
+}
+```
