@@ -1,0 +1,136 @@
+---
+title: DP筆記Fibonacci style
+description: 學習算法
+date: 2024-11-07
+tags: ["algo", "c++"]
+---
+
+## Leetcode 70
+
+- 用記憶話dp的方式紀錄前面走過的樓梯
+
+```c++
+class Solution {
+public:
+
+    int f[1000005] = {0};
+    int climbStairs(int n) {
+        if(n<2) return 1;
+        f[0] = 1;
+        f[1] = 1;
+        for(int i=2;i<=n;i++){
+            f[i] = f[i-1]+f[i-2];
+        }
+        return f[n];
+    }
+};
+```
+
+## Leetcode 509
+
+- 經典Fibonacci
+
+```c++
+class Solution {
+public:
+    int dp[100005] = {0};
+    int fib(int n) {
+        if(n < 2) return n;
+        dp[0] = 0;
+        dp[1] = 1;
+        for(int i=2;i<=n;i++){
+            dp[i] = dp[i-1]+dp[i-2];
+        }
+        return dp[n];
+    }
+};
+```
+
+## Leetcode 1137
+
+- 3數做Fibonacci
+
+```c++
+class Solution {
+public:
+    int dp[1000005] = {0};
+    int tribonacci(int n) {
+       if(n < 2) return n;
+       dp[0] = 0;
+       dp[1] = 1;
+       dp[2] = 1;
+       for(int i=3;i<=n;i++){
+            dp[i] = dp[i-1]+dp[i-2]+dp[i-3];
+       }
+       return dp[n];
+    }
+};
+```
+
+## Leetcode 746
+
+- 找最小階梯數
+
+```c++
+class Solution {
+public:
+    int minCostClimbingStairs(vector<int>& cost) {
+        int dp[1010];
+        int n = cost.size();
+        dp[0] = cost[0];
+        dp[1] = cost[1];
+        for(int i=2;i<cost.size();i++){
+            dp[i] = cost[i] + min(dp[i-1],dp[i-2]);
+        }
+        return min(dp[n-1],dp[n-2]);
+    }
+};
+```
+
+## Leetcode 198
+
+- 轉移方程式為前一個累加的或是當前加上前兩個結果
+  - `max(dp[i-1],nums[i]+dp[i-2]`
+
+```c++
+class Solution {
+public:
+    int rob(vector<int>& nums) {
+        if(nums.size() == 1) return nums[0];
+        vector<int>dp(nums.size(),0);
+        dp[0] = nums[0];
+        dp[1] = max(nums[0],nums[1]);
+        for(int i=2;i<nums.size();i++){
+            dp[i] = max(dp[i-1],nums[i]+dp[i-2]);
+        }
+        return dp[nums.size()-1];
+    }
+};
+```
+
+## Leetcode 740
+
+- 先找到所有元素當中做大的數並作成points總和陣列
+- dp轉移方程為上一個結果或前兩個加上當前的points,之所以是前兩個是因為題目有要求n+1或n-1都要刪除
+  - max(dp[i-1],dp[i-2]+points)
+
+```c++
+class Solution {
+public:
+
+    int deleteAndEarn(vector<int>& nums) {
+        if(nums.size() == 0) return 0;
+        int maxVal = *max_element(nums.begin(),nums.end());
+        vector<int> points(maxVal+1,0);
+        for(auto n : nums){
+            points[n] += n;
+        }
+        vector<int> dp(maxVal+1,0);
+        dp[1] = points[1];
+        for (int i = 2; i <= maxVal; i++) {
+            dp[i] = max(dp[i - 1], dp[i - 2] + points[i]);
+        }
+        return dp[maxVal];
+    }
+};
+```
