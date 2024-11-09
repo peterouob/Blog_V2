@@ -1,0 +1,227 @@
+---
+title: 圖遍歷
+description: 學習算法
+date: 2024-11-09
+tags: ["algo", "c++"]
+---
+
+# prim算法
+
+- 從node的角度使用貪心策略，每次尋找距離最小生成樹最近的點加入樹中
+
+### prim三部曲
+
+1. 選距離生成樹最近的點
+2. 最近的節點加入樹
+3. 更新非生成樹節點到生成樹的距離(即更新minDist數組)
+
+- minDist數組為prim算法的核心，用來紀錄每一個節點對於最小生成樹的距離
+
+## 初始狀態
+
+- 將minDist數組中的值初始化為最大數
+  - 設為最大數未來更新節點距離可以採用min方便更新
+
+## KamaCoder53
+
+- 這題要找最小生成樹中起點到終點的例子
+
+```c++
+#include <iostream>
+#include <vector>
+
+#define inf 0x3f3f3f;
+using namespace std;
+
+int v,e;
+int v1,v2,val;
+int main(){
+    cin >> v >> e;
+    vector<vector<int> > grid(v + 1, vector<int>(v + 1, 10001));
+    for(int i=0;i<e;i++){
+        cin >> v1 >> v2 >> val;
+        grid[v1][v2] = val;
+        grid[v2][v1] = val;
+    }
+
+    vector<int> minDist(v+1, 10001);
+    vector<bool> isInTree(v+1, false);
+
+    for(int i=1;i<v;i++){
+        int cur = -1;
+        int minVal = inf;
+        for(int j=1;j<=v;j++){
+            if(!isInTree[j] && minDist[j] < minVal){
+                minVal = minDist[j];
+                cur = j;
+            }
+        }
+        isInTree[cur] = true;
+        for(int j=1;j<=v;j++){
+            if(!isInTree[j] && grid[cur][j] < minDist[j]){
+                minDist[j] = grid[cur][j];
+            }
+        }
+    }
+
+    int result = 0;
+    for(int i=2;i<=v;i++){
+        result += minDist[i];
+    }
+
+    cout << result << '\n';
+}
+```
+
+### prim三部曲
+
+- 定義
+
+```c++
+vector<int> minDist(v+1, 10001); 紀錄距離生成樹最短距離
+vector<bool> isInTree(v+1, false); 紀錄生成樹是否有的node
+minVal = 0x3f3f3f;
+```
+
+1. 選距離生成樹最近的點，一開始的生成樹為root
+
+- 檢查是否不在已經紀錄的生成樹裡且最短距離小於minVal
+
+```c++
+for(int j=1;j<=v;j++){
+            if(!isInTree[j] && minDist[j] < minVal){
+                minVal = minDist[j];
+                cur = j;
+            }
+        }
+```
+
+2. 最近的節點加入生成樹裡面
+
+```c++
+isInTree[cur] = true;
+```
+
+3. 更新距離吹小生成樹的距離，即更新minDist
+
+- 判斷是否不在生成樹裡面且圖上的距離小於紀錄未更新前點到最小生成樹的距離
+
+```c++
+for(int j=1;j<=v;j++){
+            if(!isInTree[j] && grid[cur][j] < minDist[j]){
+                minDist[j] = grid[cur][j];
+            }
+        }
+```
+
+## 拓展打印邊
+
+- 新增紀錄數組
+
+```c++
+    vector<int> path(v+1,-1);
+```
+
+- 每次更新minDist將邊寫入
+
+```c++
+for(int j=1;j<=v;j++){
+            if(!isInTree[j] && grid[cur][j] < minDist[j]){
+                minDist[j] = grid[cur][j];
+                path[j] = cur;
+            }
+        }
+```
+
+- 打印邊
+
+```c++
+for(int i =1;i<=v;i++){
+        cout << i << "->" << path[i] << endl;
+    }
+```
+
+# Kruskal算法
+
+- 相比於prim維護節點的集合，Kruskal算法則是維護邊的集合
+
+## Kruskal思路
+
+1. 先將邊的權值進行排序，因為要優先選擇最小邊
+2. 遍歷排序後的邊
+3. 如果邊首尾的兩個節點都在同一個集合，說明如果連上便會出現環在圖上
+4. 如果邊首尾的兩個節點不在圖一個集合，將邊加入到最小生成樹中，并把兩個節點加入到同集合
+
+- 集合則可以使用并查集實現
+
+## KamaCoder53
+
+```c++
+#include <iostream>
+#include <vector>
+#include <algorithm>
+
+using namespace std;
+
+
+struct Edge {
+    int l;
+    int r;
+    int val;
+    Edge(int left,int right,int value){
+        l = left;
+        r = right;
+        val = value;
+    }
+};
+
+const int n = 10001;
+
+int s[n];
+
+void init_set(){
+    for(int i=0;i<n;i++) s[i] = i;
+}
+
+int find_set(int x){
+    if(x != s[x]) s[x] = find_set(s[x]);
+    return s[x];
+}
+
+void join(int a,int b){
+    int roota = find_set(a);
+    int rootb = find_set(b);
+    if(roota != rootb) s[roota] = rootb;
+}
+
+int v,e;
+int v1,v2,val;
+
+int main(){
+    cin >> v >> e;
+    vector<Edge> edges;
+    for(int i=0;i<e;i++){
+        cin >> v1 >> v2 >> val;
+        edges.push_back({ v1,v2,val});
+    }
+
+    sort(edges.begin(),edges.end(),[](const Edge &a,const Edge &b){
+        return a.val < b.val;
+    });
+
+    init_set();
+
+    int result = 0;
+    for(Edge edge : edges) {
+        int x = find_set(edge.l);
+        int y = find_set(edge.r);
+
+        if(x != y){
+            result += edge.val;
+            join(x,y);
+        }
+    }
+
+    cout << result << '\n';
+}
+```
