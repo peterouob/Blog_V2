@@ -1,0 +1,197 @@
+---
+title: Sql Migration
+description: sql migration with docker
+date: 2024-06-17
+tags: ["sql"]
+---
+
+# DB MIGRATION (DB模式遷移)
+
+```text
+brew install golang-migrate
+
+常用指令
+Commands:
+  create [-ext E] [-dir D] [-seq] [-digits N] [-format] NAME
+               Create a set of timestamped up/down migrations titled NAME, in directory D with extension E.
+               Use -seq option to generate sequential up/down migrations with N digits.
+               Use -format option to specify a Go time format string.
+  goto V       Migrate to version V
+  up [N]       Apply all or N up migrations
+
+migrate -version 查看版本
+
+migrate create -ext sql -dir db/migration -seq init_schema創立遷移,使用seq設定遷移連續版本號
+=>會發現一個開啟,一個關閉
+```
+
+## 遷移前先檢查postgres的container是否運行
+
+```shell
+docker ps
+docker stop <container_name_or_id> 關閉container
+docker ps -a 列出所有容器,無論狀態
+docker start <container_name_or_id>運行container
+
+docker exec -it postgres12 /bin/sh 訪問shell,可以執行linux命令
+```
+
+## 在shell中創建資料庫
+
+```shell
+createdb --username=root --owner=root simple＿bank
+
+--username 選項表示以什麼身份連接,這邊使用root
+--owner    選項表示這資料庫屬於,這邊同樣屬於root
+simplebank為資料庫名稱
+```
+
+## pqsl命令訪問
+
+```shell
+psql simple_bank 訪問控制台
+dropdb simple_bank 刪除simple_bank這個資料庫
+\q退出psql
+exit 退出shell
+
+直接在docker創建資料庫
+
+docker exec -it postgres12 createdb --username=root --ownew=root simple_bank
+
+訪問數據庫
+
+docker exec -it postgres12 psql -U root simple_bank
+
+刪除
+docker rm <container_name_or_id>
+
+啟動新postgres容器
+make postgres
+```
+
+# 上遷移以及下遷移
+
+```text
+up-script and down-script
+
+        migrate up→x.up.sql→
+
+Old DB schema ——> Migration version x ——>New DB schema
+
+Old DB schema <——Migration version x <——New DB schema
+
+                                                     <-x.down.sql<-migrate down
+
+Migrate up→ db/migration 中的 up-script將按其前綴版本的順序依次運行
+
+Migrate down → db/migrate 中的 down-script 將按其版本相反順序運行
+```
+
+## migrate up 表
+
+```sql
+CREATE TABLE "account" (
+                           "id" bigserial PRIMARY KEY,
+                           "owner" varchar NOT NULL,
+                           "balance" bigint NOT NULL,
+                           "currency" varchar NOT NULL,
+                           "create_at" timestamptz DEFAULT (now())
+);
+
+CREATE TABLE "entries" (
+                           "id" bigserial PRIMARY KEY,
+                           "account_id" bigint NOT NULL,
+                           "account" bigint NOT NULL,
+                           "create_at" timestamptz NOT NULL DEFAULT (now())
+);
+
+CREATE TABLE "transfers" (
+                             "id" bigserial PRIMARY KEY,
+                             "form_account_id" bigint NOT NULL,
+                             "to_account_id" bigint NOT NULL,
+                             "amount" bigint NOT NULL,
+                             "create_at" timestamptz NOT NULL DEFAULT (now())
+);
+
+CREATE INDEX ON "account" ("owner");
+
+CREATE INDEX ON "entries" ("account_id");
+
+CREATE INDEX ON "transfers" ("form_account_id");
+
+CREATE INDEX ON "transfers" ("to_account_id");
+
+CREATE INDEX ON "transfers" ("form_account_id", "to_account_id");
+
+COMMENT ON COLUMN "entries"."account" IS 'can be postive or negative';
+
+COMMENT ON COLUMN "transfers"."amount" IS 'it must be postive';
+
+ALTER TABLE "entries" ADD FOREIGN KEY ("account_id") REFERENCES "account" ("id");
+
+ALTER TABLE "transfers" ADD FOREIGN KEY ("form_account_id") REFERENCES "account" ("id");
+
+ALTER TABLE "transfers" ADD FOREIGN KEY ("to_account_id") REFERENCES "account" ("id");
+```
+
+## migrate down 表
+
+```sql
+DROP TABLE IF EXISTS enteries;
+DROP TABLE IF EXISTS transfers;
+DROP TABLE IF EXISTS accounts;
+/*
+    在本例中,up腳本創建了三個表
+    因此down必須刪除這三個表,因此使用DROP
+    我們在刪除帳戶表前先刪除條目和轉移表,因為條目和轉移表間存在外鍵約束引用帳戶表
+*/
+
+```
+
+## 操作makefile
+
+```makefile
+postgres:
+ docker run --name postgres12 -p 5432:5432 -e POSTGRES_USER=root -e POSTGRES_PASSWORD=password -d postgres:12-alpine
+createdb:
+ docker exec -it postgres12 createdb --username=root --owner=root simple_bank
+dropdb:
+ docker exec -it postgres12 dropdb simple_bank
+
+.PHONY: postgres createdb dropdb
+```
+
+1. docker rm `<container_name_or_id>`
+2. check container `docker ps -a`
+3. make postgres
+4. make createdb
+5. use table plus connect the database
+6. click sql icon to open the new simple_bank base
+7. back to terminal to do once migrate(遷移)
+8. use instruct to do up-script of migrate
+   9.dont forget to set sslmode=disable because postgres is not default setting
+
+```makefile
+migrate -path db/migration -database "postgresql://root:password@localhost:5432/simple_bank?sslmode=disable" -verbose up
+```
+
+- schema_migrations 資料表儲存最新應用的遷移版本
+
+# makefile總覽
+
+```makefile
+postgres:
+ docker run --name postgres12 -p 5432:5432 -e POSTGRES_USER=root -e POSTGRES_PASSWORD=password -d postgres:12-alpine
+createdb:
+ docker exec -it postgres12 createdb --username=root --owner=root simple_bank
+dropdb:
+ docker exec -it postgres12 dropdb simple_bank
+
+migrateup:
+ migrate -path db/migration -database "postgresql://root:password@localhost:5432/simple_bank?sslmode=disable" -verbose up
+
+migratedown:
+ migrate -path db/migration -database "postgresql://root:password@localhost:5432/simple_bank?sslmode=disable" -verbose down
+
+.PHONY: postgres createdb dropdb migrateup migratedown
+```
