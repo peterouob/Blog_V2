@@ -3,29 +3,30 @@ import { cn } from "@/lib/utils";
 import React, { ReactNode } from "react";
 
 interface AuroraBackgroundProps extends React.HTMLProps<HTMLDivElement> {
-    children: ReactNode;
-    showRadialGradient?: boolean;
+  children: ReactNode;
+  showRadialGradient?: boolean;
 }
 
 export const Aurora = ({
-                                     className,
-                                     children,
-                                     showRadialGradient = true,
-                                     ...props
-                                 }: AuroraBackgroundProps) => {
-    return (
-        <main>
-            <div
-                className={cn(
-                    "relative flex flex-col h-full lg:h-[100vh] items-center justify-center bg-[linear-gradient(to_top_left,_#ebc0fd,_#d9ded8)] dark:bg-zinc-900 dark:bg-none text-slate-950 transition-bg",className
-                )}
-                {...props}
-            >
-                <div className="absolute inset-0 overflow-hidden">
-                    <div
-                        //   I'm sorry but this is what peak developer performance looks like // trigger warning
-                        className={cn(
-                            `
+  className,
+  children,
+  showRadialGradient = true,
+  ...props
+}: AuroraBackgroundProps) => {
+  return (
+    <div>
+      <div
+        className={cn(
+          "relative flex flex-col h-full lg:h-[100vh] items-center justify-center bg-[linear-gradient(to_top_left,_#ebc0fd,_#d9ded8)] dark:bg-zinc-900 dark:bg-none text-slate-950 transition-bg",
+          className,
+        )}
+        {...props}
+      >
+        <div className="absolute inset-0 overflow-hidden">
+          <div
+            //   I'm sorry but this is what peak developer performance looks like // trigger warning
+            className={cn(
+              `
             [--white-gradient:repeating-linear-gradient(100deg,var(--white)_0%,var(--white)_7%,var(--transparent)_10%,var(--transparent)_12%,var(--white)_16%)]
             [--dark-gradient:repeating-linear-gradient(100deg,var(--black)_0%,var(--black)_7%,var(--transparent)_10%,var(--transparent)_12%,var(--black)_16%)]
             [--aurora:repeating-linear-gradient(100deg,var(--blue-500)_10%,var(--indigo-300)_15%,var(--blue-300)_20%,var(--violet-200)_25%,var(--blue-400)_30%)]
@@ -41,13 +42,13 @@ export const Aurora = ({
             pointer-events-none
             absolute -inset-[10px] opacity-50 will-change-transform`,
 
-                            showRadialGradient &&
-                            `[mask-image:radial-gradient(ellipse_at_100%_0%,black_10%,var(--transparent)_70%)]`
-                        )}
-                    ></div>
-                </div>
-                {children}
-            </div>
-        </main>
-    );
+              showRadialGradient &&
+                `[mask-image:radial-gradient(ellipse_at_100%_0%,black_10%,var(--transparent)_70%)]`,
+            )}
+          ></div>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
 };
