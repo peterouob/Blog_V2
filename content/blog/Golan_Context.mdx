@@ -1,0 +1,58 @@
+---
+title: Golang Context
+description: 介紹Golang的Context包
+date: 2024-11-28
+tags: ["code", "golang", "package"]
+---
+
+# Context 究竟是什麼
+
+- Context只的就是只在API或者方法調用間，所傳遞除了參數外的額外資訊．
+  - Server端接收到Client的HTTP請求後將用戶的port，客戶端身分資訊，請求時間和TraceId等放入Context
+    - 這個Context可以在後端調用中傳遞
+  - 後端的業務除了可以利用參數做業務處理，還可以從上下文中提取到Server放入Context的資訊
+- 但Golang的Context還提供了超時和撤銷的處理，適合做併發的任務編排和goroutine的控制
+
+## Context 的使用方法
+
+### 基本用法
+
+```go
+type Context interface {
+  Deadline() (deadline time.Time, ok bool)
+  Done() <-chan struct{}
+  Err() error
+  Value(key any) any
+}
+```
+
+- Deadline方法會返回這個Context被完成也就是Done的截止時間，如果沒有設置截止時間ok的值是false，後面每次調用這個方法都會返回和第一次調用相同的結果
+
+- Done方法會返回一個channel，當Context被關閉時channel也會跟著關閉，後面調用Done返回的結果都會一樣
+
+  - 如果Context沒有被關閉返回nil
+  - 如果Done返回的channel被關閉時可以調用Err獲取錯誤訊息
+  - 如果Done沒有被關閉返回nil，如果有Err方法將會返回原因
+
+- Value 返回此Context中與指定key相關的Value
+
+### 生成頂層Context的方法
+
+```go
+
+// Background returns a non-nil, empty [Context]. It is never canceled, has no
+// values, and has no deadline. It is typically used by the main function,
+// initialization, and tests, and as the top-level Context for incoming
+// requests.
+func Background() Context {
+	return backgroundCtx{}
+}
+
+// TODO returns a non-nil, empty [Context]. Code should use context.TODO when
+// it's unclear which Context to use or it is not yet available (because the
+// surrounding function has not yet been extended to accept a Context
+// parameter).
+func TODO() Context {
+	return todoCtx{}
+}
+```
