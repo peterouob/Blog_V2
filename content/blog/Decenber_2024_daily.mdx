@@ -1,0 +1,27 @@
+---
+title: 2024 12月Leetcode Daily
+description: 紀錄Leetcode Daily
+date: 2024-12-1
+tags: ["code", "c++", "algo"]
+---
+
+# Leetcode 1346
+
+- 題目要求找到2的倍數在`arr[i]中`，用set存後再判斷，除法因為為int因此要同時確認是否mod2為0
+
+```c++
+#include <unordered_set>
+#include <vector>
+using namespace std ;
+class Solution {
+public:
+    bool checkIfExist(vector<int>& arr) {
+    unordered_set<int> s;
+    for(auto a : arr) {
+      if(s.count(a * 2) || (a % 2 == 0 && s.count(a / 2))) return true;
+      s.insert(a);
+    }
+    return false;
+  }
+};
+```

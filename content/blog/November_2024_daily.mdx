@@ -4,3 +4,984 @@ description: 紀錄Leetcode Daily
 date: 2024-11-25
 tags: ["code", "c++", "algo"]
 ---
+
+# Leetcode 1957
+
+```c++
+class Solution {
+public:
+    string makeFancyString(string s) {
+       string ans = "";
+       int cnt = 1;
+       ans.push_back(s[0]);
+       for(int i=1;i<s.size();i++){
+            if(s[i] == ans.back()){
+                cnt++;
+                if(cnt <= 2){
+                    ans.push_back(s[i]);
+                }
+            }else{
+                ans.push_back(s[i]);
+                cnt=1;
+            }
+       }
+       return ans;
+    }
+};
+```
+
+# Leetcode 2490
+
+```c++
+class Solution {
+public:
+    bool isCircularSentence(string sentence) {
+        int n = sentence.size()-1;
+        if(sentence[0] != sentence[n]) return false;
+        for(int i=0;i<=n;i++){
+            if(sentence[i] == ' '){
+                if(sentence[i-1] != sentence[i+1])return false;
+            }
+        }
+        return true;
+    }
+};
+```
+
+# Leetcode 796
+
+```c++
+class Solution {
+public:
+    bool rotateString(string s, string goal) {
+        int i = 0;
+        int n = s.size();
+        while(i < n){
+            if(s == goal) return true;
+            char c = s[0];
+            s.erase(s.begin());
+            s.push_back(c);
+            i++;
+        }
+        return false;
+    }
+};
+```
+
+# Leetcode 3163
+
+```c++
+class Solution {
+public:
+    string compressedString(string word) {
+        string ans = "";
+        int i = 1;
+        int cnt = 1;
+        char w = word[0];
+        while(i <= word.size()){
+            if(w == word[i]){
+                cnt++;
+                if(cnt > 9){
+                    cnt -= 9;
+                    ans.push_back(9+'0');
+                    ans.push_back(word[i-1]);
+                }
+            }else{
+                ans.push_back(cnt+'0');
+                ans.push_back(word[i-1]);
+                cnt = 1;
+                w = word[i];
+            }
+            i++;
+        }
+        return ans;
+    }
+};
+```
+
+# Leetcode 2914
+
+```c++
+class Solution {
+public:
+    int minChanges(string s) {
+        int k = 0;
+        for(int i=0;i<s.size()-1;i+=2){
+            if(s[i]!= s[i+1])k++;
+        }
+        return k;
+    }
+};
+```
+
+# Leetcode 3011
+
+```c++
+class Solution {
+public:
+    int setBits(int num){
+        int count = 0;
+        for(int i=31;i>=0;i--){
+            if((num >> i) & 1){
+                count++;
+            }
+        }
+        return count;
+    }
+    bool check(vector<int> &nums){
+        for(int i=1;i<nums.size();i++)
+            if(nums[i] < nums[i-1])
+                return false;
+        return true;
+    }
+    bool canSortArray(vector<int>& nums) {
+        vector<int> count(nums.size(),0);
+        for(int i=0;i<nums.size();i++) count[i] = setBits(nums[i]);
+        int k = 0;
+        while(k < nums.size()){
+            for(int i=1;i<nums.size();i++)
+                if(count[i] == count[i-1] && nums[i]<nums[i-1])
+                    swap(nums[i],nums[i-1]);
+            if(check(nums)) return true;
+            k++;
+        }
+        return false;
+    }
+};
+```
+
+# Leetcode 2275
+
+```c++
+class Solution {
+public:
+    int largestCombination(vector<int>& candidates) {
+        // 最多1下來絕對大於0，找最多的1的就行
+        int maxCnt = 0;
+        // 24是10^7
+        for(int i=0;i<24;i++){
+            int cnt = 0;
+            for(int n : candidates){
+                if(n & (1 << i)) cnt++;
+            }
+            maxCnt = max(maxCnt,cnt);
+        }
+        return maxCnt;
+    }
+};
+```
+
+# Leetcode 1829
+
+```c++
+class Solution {
+public:
+    vector<int> getMaximumXor(vector<int>& nums, int maximumBit) {
+        if(nums.size() == 1) return {(1 << maximumBit)-1} ;
+        int n = nums.size();
+        int maxBit = (1 << maximumBit)-1;
+        int xorNum = 0;
+        vector<int> result(n);
+        for(int num : nums) xorNum ^= num;
+        for(int i =0;i<n;i++){
+            result[i] = xorNum ^ maxBit;
+            xorNum ^= nums[n-1-i];
+        }
+        return result;
+    }
+};
+```
+
+# Leetcode 3133
+
+```c++
+class Solution {
+public:
+    long long minEnd(int n, int x) {
+        long long ans = x;
+        long long remaining = n-1;
+        long long mask = 1;
+        while(remaining){
+            if(!(x&mask)){
+                ans |= (remaining&1)*mask;
+                remaining >>=1;
+            }
+            mask <<= 1;
+        }
+        return ans;
+    }
+};
+```
+
+# Leetcode 3097
+
+```c++
+class Solution {
+public:
+    int minimumSubarrayLength(vector<int>& nums, int k) {
+        int minDist = 0x3f3f3f;
+        int num = 0 ;
+        int l = 0;
+        int r = nums.size();
+        while(l < r){
+            int mid = l + (r-l)/2;
+            if(check(nums,mid,k)) r=mid;
+            else l = mid+1;
+        }
+        if(!check(nums,l,k)) return -1;
+        return l;
+    }
+
+    bool check(vector<int>&nums,int len,int k){
+        vector<int> cnt(31);
+        for(int i=0;i<len-1;i++){
+            for(int j=0;j<31;j++)
+                cnt[j] += ((nums[i]>>j)&1);
+        }
+        for(int i=len-1;i<nums.size();i++){
+            for(int j=0;j<31;j++)
+                cnt[j] += ((nums[i]>>j)&1);
+            int sum = 0;
+            for(int j=0;j<31;j++)
+                if(cnt[j] > 0) sum += (1<<j);
+            if(sum >= k) return true;
+
+            for(int j=0;j<31;j++)
+                cnt[j] -= ((nums[i-len+1]>>j)&1);
+        }
+        return false;
+    }
+};
+```
+
+# Leetcode 2601
+
+```c++
+class Solution {
+public:
+    vector<int> prim;
+    bool is_prim[1001];
+
+    void pr(){
+        is_prim[0] = is_prim[1] = false;
+        for(int i=2;i<1001;i++) is_prim[i] = true;
+        for(int i=2;i<1001;i++) {
+            if(is_prim[i]){
+                prim.push_back(i);
+                if(i*i>1001) continue;
+                for(int j=i*i;j<1001;j+=i){
+                    is_prim[j] = false;
+                }
+            }
+        }
+    }
+
+    bool primeSubOperation(vector<int>& nums) {
+        pr();
+        int n = nums.size();
+        for(int i=n-2;i>=0;i--){
+            if(nums[i+1] > nums[i]) continue;
+            int num = nums[i] - nums[i+1];
+            auto it = upper_bound(prim.begin(),prim.end(),num);
+            if(it == prim.end() || *it >= nums[i]) return false;
+            nums[i] -= *it;
+        }
+        return true;
+    }
+};
+```
+
+# Leetcode 2070
+
+```c++
+class Solution {
+public:
+    vector<int> maximumBeauty(vector<vector<int>>& items, vector<int>& queries) {
+        sort(items.begin(),items.end());
+        for(int i=1;i<items.size();i++){
+            items[i][1] = max(items[i-1][1],items[i][1]);
+        }
+        map<int,int> mp;
+        for(auto i : items){
+            mp[i[0]] = i[1];
+        }
+        vector<int> result;
+        for(auto q : queries) {
+            auto it = mp.upper_bound(q);
+            if(it == mp.begin()) result.push_back(0);
+            else result.push_back(prev(it)->second);
+        }
+        return result;
+    }
+};
+```
+
+# Leetcode 2563
+
+```c++
+class Solution {
+public:
+    int bslower(vector<int>&nums,int lower,int num,int l,int r){
+        int pos = nums.size();
+        while(l <= r){
+            int mid = l+(r-l)/2;
+            if(nums[mid]+num >= lower){
+                pos = mid;
+                r = mid-1;
+            }else{
+                l = mid+1;
+            }
+        }
+        return pos;
+    }
+
+    int bsupper(vector<int>&nums,int upper,int num,int l,int r){
+        int pos = nums.size();
+        while(l <= r){
+            int mid = l+(r-l)/2;
+            if(nums[mid]+num <= upper){
+                pos = mid;
+                l = mid+1;
+            }else{
+                r = mid-1;
+            }
+        }
+        return pos;
+    }
+    long long countFairPairs(vector<int>& nums, int lower, int upper) {
+        sort(nums.begin(),nums.end());
+        int n = nums.size();
+        long long ans = 0;
+        for(int i=0;i<n;i++){
+            int l = bslower(nums,lower,nums[i],i+1,n-1);
+            int r = bsupper(nums,upper,nums[i],i+1,n-1);
+            if(l != n && r != n ) ans += (r-l+1);
+        }
+        return ans;
+    }
+};
+```
+
+# Leetcode 2064
+
+```c++
+class Solution {
+public:
+    bool check(int mid,vector<int>& qu,int n){
+        int sum = 0;
+        for(auto q : qu)
+            sum += (mid+q-1)/mid;
+        return sum > n;
+    }
+    int minimizedMaximum(int n, vector<int>& quantities) {
+        if(quantities.size() == 1) return quantities[0];
+        int l = 1;
+        int r = 0;
+        for(auto q : quantities) r = max(r,q);
+        while(l < r){
+            int mid = l+(r-l)/2;
+            if(check(mid,quantities,n)){
+                l = mid+1;
+            }else{
+                r = mid;
+            }
+        }
+        return l;
+    }
+};
+```
+
+# Leetcode 1574
+
+```c++
+class Solution {
+public:
+    int findLengthOfShortestSubarray(vector<int>& arr) {
+        int l = 0;
+        int n = arr.size();
+        int r = n-1;
+        while(l+1 < arr.size() && arr[l] <= arr[l+1]) l++;
+        if(l == arr.size()-1) return 0;
+        while(r >l && arr[r] >= arr[r-1]) r--;
+        int ans = min(r,n-l-1);
+        int i =0;
+        int j =r;
+        while (i <= l && j < n )
+            if(arr[i] <= arr[j]){
+                ans = min(ans,j-i-1);
+                ++i;
+            }else{
+                ++j;
+            }
+        return ans;
+    }
+};
+```
+
+# Leetcode 3254
+
+```c++
+class Solution {
+public:
+    vector<int> resultsArray(vector<int>& nums, int k) {
+        if(k == 1) return nums;
+        int n = nums.size();
+        vector<int>dp(n,1);
+        vector<int>ans(n-k+1,-1);
+        for(int i=1;i<n;i++){
+            if(nums[i-1]+1 == nums[i]){
+                dp[i] = 1+dp[i-1];
+            }
+        }
+
+        for(int i=k-1,j=0; i<nums.size();i++,j++){
+            if(dp[i] >= k){
+                ans[j]=nums[i];
+            }
+        }
+        return ans;
+    }
+};
+```
+
+# Leetcode 862
+
+```c++
+class Solution {
+public:
+    int shortestSubarray(vector<int>& nums, int k) {
+        if(nums.size() == 1){
+            if(nums[0] >= k) return nums[0];
+        }
+        int res = INT_MAX;
+        long long sum = 0;
+        deque<pair<long long,int>> dq;
+        for(int i =0;i<nums.size();i++){
+            sum += nums[i];
+            if(sum >= k) res = min(res,i+1);
+            while(!dq.empty() && sum - dq.front().first >=k){
+                auto [prefix,idx] = dq.front();
+                dq.pop_front();
+                res = min(res,i-idx);
+            }
+            while(!dq.empty() && dq.back().first > sum) dq.pop_back();
+            dq.push_back({sum,i});
+        }
+        return res == INT_MAX ? -1 : res;
+    }
+};
+```
+
+# Leetcode 1652
+
+```c++
+class Solution {
+public:
+    vector<int> decrypt(vector<int>& code, int k) {
+        int n = code.size();
+        vector<int> ans(n,0);
+        if(k == 0) return ans;
+        for(int i=0;i<n;i++){
+            int sum = 0;
+            if(k > 0){
+                for(int j=1;j<= k;j++){
+                    sum += code[(i+j)%n];
+                }
+            }else if(k <0){
+                for(int j=1;j<=-k;j++){
+                    sum += code[(i-j+n)%n];
+                }
+            }
+            ans[i] = sum;
+        }
+        return ans;
+    }
+};
+```
+
+# Leetcode 2461
+
+```c++
+class Solution {
+public:
+    long long maximumSubarraySum(vector<int>& nums, int k) {
+       unordered_map<int, int> count;
+        long long currentSum = 0, maxSum = 0;
+        int left = 0;
+
+        for (int right = 0; right < nums.size(); ++right) {
+            count[nums[right]]++;
+            currentSum += nums[right];
+
+            while (count[nums[right]] > 1 || (right - left + 1 > k)) {
+                currentSum -= nums[left];
+                count[nums[left]]--;
+                if (count[nums[left]] == 0) {
+                    count.erase(nums[left]);
+                }
+                left++;
+            }
+            if (right - left + 1 == k) {
+                maxSum = max(maxSum, currentSum);
+            }
+        }
+
+        return maxSum;
+    }
+};
+```
+
+# Leetcode 2516
+
+```c++
+#include <unordered_map>
+#include <vector>
+class Solution {
+public:
+    int takeCharacters(string s, int k) {
+    int n = s.size();
+    int r[3];
+    for(auto c : s) r[c-'a']++;
+    if(r[0] < k || r[1] <k || r[2] < k) return -1;
+
+    int freq[3];
+    int l = 0;
+    for(int i=0;i<n;i++){
+        freq[s[i]-'a']++;
+        while(r[s[l]-'a']-freq[s[i]-'a'] >k && l < 3){
+            freq[s[l]-'a']--;
+            l++;
+        }
+    }
+    return l;
+  }
+};
+```
+
+# Leetcode 2257
+
+```c++
+
+#include <ios>
+#include <iostream>
+#include <queue>
+#include <variant>
+#include <vector>
+using namespace std;
+class Solution {
+public:
+    int countUnguarded(int m, int n, vector<vector<int>>& guards, vector<vector<int>>& walls) {
+
+      ios::sync_with_stdio(0);
+      cin.tie(0);
+      cout.tie(0);
+
+      int grid[m][n];
+      memset(grid,0,sizeof(grid));
+      for(auto g : guards)grid[g[0]][g[1]]=2;
+      for(auto w : walls)grid[w[0]][w[1]] = 2;
+      vector<pair<int,int>>dict = {
+      {-1,0},
+      {0,1},
+      {1,0},
+      {0,-1}
+    };
+    for(auto g : guards){
+      for(auto d : dict){
+        int x = g[0];
+        int y = g[1];
+
+        while(x + d.first < m && y + d.second < n && x + d.first>= 0 && y+d.second >=0 && grid[x+d.first][y+d.second] < 2 ){
+          x += d.first;
+          y += d.second;
+          grid[x][y] = 1;
+        }
+      }
+    }
+
+    int ans = 0 ;
+    for(int i=0;i<m;i++) ans += count(grid[i],grid[i]+n,0);
+    return ans;
+  }
+};
+```
+
+# Leetcode 1072
+
+```c++
+#include <unordered_map>
+using namespace std;
+
+class Solution {
+public:
+
+   int maxEqualRowsAfterFlips(vector<vector<int>>& matrix) {
+   int m = matrix[0].size();
+   int ans = 0;
+   unordered_map<string, int> cnt;
+    for(auto row : matrix){
+      string r(m,0);
+      for(int j=0;j<m;j++)
+        r[j] = row[j] ^ row[0];
+      cnt[r]++;
+      ans = max(ans,cnt[r]);
+    }
+    return ans;
+  }
+};
+```
+
+# Leetcode 1861
+
+```c++
+#include <deque>
+class Solution {
+public:
+  vector<vector<char>> rotateTheBox(vector<vector<char>> &box) {
+    int n = box.size();
+    int m = box[0].size();
+    for (int i = 0; i < n; i++) {
+      std::deque<int> dq;
+      for (int j = m - 1; j >= 0; j--) {
+        if (box[i][j] == '*') {
+          dq.clear();
+        } else if (box[i][j] == '#') {
+          if (!dq.empty()) {
+            int t = dq.front();
+            dq.pop_front();
+            box[i][t] = '#';
+            box[i][j] = '.';
+            dq.push_back(j);
+          }
+        } else {
+          dq.push_back(j);
+        }
+      }
+    }
+
+    vector<vector<char>> ans(m, vector<char>(n, 0));
+    for (int i = 0; i < n; i++) {
+      for (int j = 0; j < m; j++) {
+        ans[j][n - i - 1] = box[i][j];
+      }
+    }
+    return ans;
+  }
+};
+```
+
+# Leetcode 1975
+
+```c++
+#include <algorithm>
+#include <climits>
+#include <cstdlib>
+class Solution {
+public:
+  long long maxMatrixSum(vector<vector<int>> &matrix) {
+    long long sum = 0;
+    int nagative_nums = 0;
+    int min_num = INT_MAX;
+    for (auto row : matrix) {
+      for (auto x : row) {
+        min_num = std::min(min_num, abs(x));
+        if (x < 0)
+          nagative_nums++;
+        sum += abs(x);
+      }
+    }
+    return nagative_nums % 2 == 0 ? sum : sum -= 2 * (min_num);
+  }
+};
+```
+
+# Leetcode 773
+
+```c++
+#include <queue>
+#include <tuple>
+#include <unordered_set>
+#include <vector>
+
+using namespace std;
+class Solution {
+public:
+  int slidingPuzzle(vector<vector<int>> &board) {
+    vector<vector<int>> pos = {
+        {1, 3},    // 0
+        {0, 2, 4}, // 1
+        {1, 5},    // 2
+        {0, 4},    // 3
+        {1, 3, 5}, // 4
+        {2, 4}     // 5
+    };
+
+    string target = "123450";
+    string start = "";
+    for (auto c : board)
+      for (auto r : c)
+        start += (r + '0');
+    if (start == target)
+      return 0;
+    queue<string> q;
+    unordered_set<string> visitis;
+    q.push(start);
+
+    int step = 0;
+    while (!q.empty()) {
+      for (int i = q.size(); i > 0; i--) {
+        string front = q.front();
+        q.pop();
+        if (front == target)
+          return step;
+        else if (visitis.count(front))
+          continue;
+        visitis.insert(front);
+        int idx = front.find('0');
+        for (auto &n : pos[idx]) {
+          string next_ = front;
+          swap(next_[n], next_[idx]);
+          q.push(next_);
+        }
+      }
+      step++;
+    }
+    return -1;
+  }
+};
+```
+
+# Leetcode 2924
+
+```c++
+class Solution {
+public:
+  int findChampion(int n, vector<vector<int>> &edges) {
+    vector<int> edg(n, 0);
+    for (auto e : edges) {
+      int w = e[1];
+      edg[w]++;
+    }
+    vector<int> edg_;
+    for(int i=0;i<edg.size();i++){
+      if(edg[i] == 0) edg_.push_back(i);
+    }
+
+    return edg_.size() != 1 ? -1 : edg_[0];
+  }
+};
+```
+
+# Leetcode 3243
+
+```c++
+#include <numeric>
+#include <queue>
+using namespace std;
+class Solution {
+public:
+  vector<int> shortestDistanceAfterQueries(int n,
+                                           vector<vector<int>> &queries) {
+    vector<int> dis(n);
+    iota(dis.begin(), dis.end(), 0);
+
+    vector<vector<int>> grid(n);
+    for (int i = 0; i < n-1; i++) {
+      grid[i].push_back(i + 1);
+    }
+
+    vector<int> ans;
+
+    for (auto q : queries) {
+      int source = q[0];
+      int des = q[1];
+      grid[source].push_back(des);
+
+      if (dis[source] + 1 < dis[des]) {
+        queue<int> q;
+        q.push(des);
+        dis[des] = dis[source] + 1;
+        while (!q.empty()) {
+          int d = q.front();
+          q.pop();
+          for (auto g : grid[d]) {
+            if (dis[d] + 1 < dis[g]) {
+              dis[g] = dis[d]+1;
+              q.push(g);
+            }
+          }
+        }
+      }
+      ans.push_back(dis.back());
+    }
+    return ans;
+  }
+};
+```
+
+# Leetcode 2290
+
+## Solution 1
+
+```c++
+#include <climits>
+#include <deque>
+#include <utility>
+#include <vector>
+using namespace std;
+class Solution {
+public:
+  int minimumObstacles(vector<vector<int>> &grid) {
+    int r = grid.size();
+    int c = grid[0].size();
+    deque<pair<int, int>> dq{{0, 0}};
+    vector<vector<int>> dist(r, vector<int>(c, INT_MAX));
+    dist[0][0] = 0;
+    vector<int> dx = {1, -1, 0, 0};
+    vector<int> dy = {0, 0, 1, -1};
+    while (!dq.empty()) {
+      auto [x, y] = dq.front();
+      dq.pop_front();
+      for (int i = 0; i < 4; i++) {
+        int nx = x + dx[i];
+        int ny = y + dy[i];
+        if (nx >= 0 && nx < r && ny >= 0 && ny < c) {
+          int d = dist[x][y] + grid[nx][ny];
+          if (d < dist[nx][ny]) {
+            dist[nx][ny] = d;
+            grid[nx][ny] == 0 ? dq.push_front({nx, ny})
+                              : dq.push_back({nx, ny});
+          }
+        }
+      }
+    }
+    return dist[r - 1][c - 1];
+  }
+};
+```
+
+## Solution 2
+
+```c++
+#define pint pair<int,int>
+
+class Solution {
+public:
+    int minimumObstacles(vector<vector<int>>& grid) {
+        int r = grid.size();
+        int c = grid[0].size();
+        vector<vector<int>>dist(r,vector<int>(c,INT_MAX));
+
+        priority_queue<pair<int,pint>,vector<pair<int,pint>>,greater<pair<int,pint>>> minHeap;
+        minHeap.push({0,{0,0}});
+
+        vector<pair<int,int>> dir {{0,1},{1,0},{0,-1},{-1,0}};
+        dist[0][0] = 0;
+        while(!minHeap.empty()){
+            auto [minDist,idx] = minHeap.top();
+            auto [x,y] = idx;
+            minHeap.pop();
+
+            for(auto [dx,dy] : dir){
+                int nx = x + dx;
+                int ny = y + dy;
+                if(nx >=0 && nx < r && ny >= 0 && ny < c){
+                    int newDist = minDist + grid[nx][ny];
+                    if(newDist < dist[nx][ny]){
+                        dist[nx][ny] = newDist;
+                        minHeap.push({newDist,{nx,ny}});
+                    }
+                }
+            }
+        }
+        return dist[r-1][c-1];
+    }
+};
+```
+
+# Leetcode 2577
+
+```c++
+#include <functional>
+#include <queue>
+#include <tuple>
+#include <vector>
+using namespace std;
+class Solution {
+public:
+  int minimumTime(vector<vector<int>> &grid) {
+    if (grid[0][1] > 1 && grid[1][0] > 1)
+      return -1;
+    int n = grid.size();
+    int m = grid[0].size();
+    int distence[n][m];
+    memset(distence,0x3f,sizeof(distence));
+    distence[0][0] = 0;
+    priority_queue<tuple<int, int, int>, vector<tuple<int, int, int>>,
+                   greater<>>
+        pq;
+    pq.push({0, 0, 0});
+    vector<pair<int, int>> dict = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+    for (;;) {
+      auto [d, i, j] = pq.top();
+      pq.pop();
+      if(d > distence[i][j]) continue;
+      if (i == n - 1 && j == m - 1)
+        return d;
+      for (auto &q : dict) {
+        int x = i + q.first;
+        int y = j + q.second;
+        if (x >= 0 && x < n && y >= 0 && y < m) {
+          int nd = max(d + 1, grid[x][y]);
+          nd += (nd - x - y) % 2;
+          if (nd < distence[x][y]) {
+            distence[x][y] = nd;
+            pq.push({nd, x, y});
+          }
+        }
+      }
+    }
+  }
+};
+```
+
+# Leetcode 2097
+
+```c++
+#include <algorithm>
+#include <map>
+#include <vector>
+using namespace std;
+
+class Solution {
+public:
+  map<int, vector<int>> mp;
+  map<int, int> deg;
+  vector<vector<int>> ans;
+  void dfs(int n) {
+    vector<int> &e = mp[n];
+    while (!e.empty()) {
+      int back = e.back();
+      e.pop_back();
+      dfs(back);
+      ans.push_back({n, back});
+    }
+  }
+
+  vector<vector<int>> validArrangement(vector<vector<int>> &pairs) {
+
+    for (auto pair : pairs) {
+      mp[pair[0]].push_back(pair[1]);
+      deg[pair[0]]--;
+      deg[pair[1]]++;
+    }
+    for (auto it = deg.begin(); it != deg.end(); it++)
+      if (it->second == -1)
+        dfs(it->first);
+    if (ans.empty())
+      dfs(deg.begin()->first);
+    reverse(ans.begin(), ans.end());
+    return ans;
+  }
+};
+```
