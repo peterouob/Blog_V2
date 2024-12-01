@@ -10,7 +10,7 @@ interface PostItemProps {
   description?: string;
   date: string;
   tags?: Array<string>;
-  key: string;
+  key?: string;
 }
 
 export function PostItem({
