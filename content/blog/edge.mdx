@@ -1,0 +1,275 @@
+---
+title: 圖論最短路徑
+description: 學習算法
+date: 2024-12-09
+tags: ["algo", "c++"]
+---
+
+# 1.如何建立圖
+
+1. 鄰接矩陣
+
+- 使用:稠密圖
+- O:`n^2`
+- 實現:2D數組
+
+2. 鄰鏈表
+
+- 使用:稀疏圖
+- O:e`(e代表邊數量)`
+- 實現:數組模擬鏈表,vector
+
+## 圖分類鄰接矩陣
+
+1. 無權圖
+
+- 新增`g[y][x]=1`為無向圖
+
+```c++
+int main(){
+  int n,m;cin >>n>>m;
+  while(m--){
+    int x,y;cin>>x>>y;
+    g[x][y]=1;
+  }
+}
+```
+
+2. 帶權圖
+
+- 新增`g[y][x]=w`為無向圖
+
+```c++
+int main(){
+  int n,m;cin >>n>>m;
+  while(m--){
+    int x,y,w;cin>>x>>y>>w;
+    g[x][y]=w;
+  }
+}
+```
+
+## 圖分類鄰接表
+
+- 使用前向星實現
+  - 雙向:`add(y,x,w)`
+- 使用h當作頭指針數組，將會紀錄上一個指針的下標
+  - 初始化:`h[i]=i`紀錄每一個點的頭指針
+  - 過程:讓新的邊後繼指針指向`e[h[i]]`後把`h[i]`換成當前的下標
+
+```c++
+struct edge
+{
+ int v,w,nxt;
+}e[1001];
+int h[1001];
+inline void add(int a,int b,int c)
+{
+    e[++p].nxt = h[a];
+    h[a] = p;
+    e[p].v = b;
+    e[p].w = c;
+}
+int main()
+{
+ cin>>n>>m;
+ while(m--)
+ {
+  int x,y,w;
+  cin>>x>>y>>w;
+  add(x,y,w);
+ }
+ return 0;
+}
+```
+
+- 使用vector
+- 雙向:`v[y].push_back(edge(x,w));`
+
+```c++
+struct edge
+{
+    int node,weight;
+    edge(int node_,int weight_):
+        node(node_),weight(weight_){}
+};
+vector<edge> v[1001];
+int n,m;
+int main()
+{
+   cin>>n>>m;
+   while(m--)
+   {
+    int x,y,w;
+    cin>>x>>y>>w;
+    v[x].push_back(edge(y,w));
+   }
+   return 0;
+}
+```
+
+# 2.DFS
+
+- 使用遞迴和回朔來便利每一條邊直到滿足條件,是一種單源最短路
+- 優點: 好寫
+- 缺點: 容易TLE
+
+```c++
+void dfs(int x,int step)
+{
+ dis[x]=step;//更新數據
+ for(int i=1;i<=n;++i)
+     if(g[x][i])
+        {
+         g[x][i]=0;
+          dfs(i,step+1);
+          g[x][i]=1; //回朔回原來狀態
+         }
+}
+```
+
+# 3.BFS
+
+- 單源最短路徑算法
+- bfs會需要queue來做輔助,將每次從queue中取一點,如果訪問過就pop否則標記,接著便利每一點值到終點
+- BestCase:起點和中點一樣`O(1)`
+- WorstCase:目標點最後被搜尋到`O(n+e)`
+- 鄰接表bfs模板
+
+```c++
+queue<pair<int,int>> q; //前面是點編號,後面是step數
+q.push(make_pair(s,0)); //起點
+while(!q.empty()){
+  int t = q.front().first;
+  int step = q.front().second;
+  if(t==f) //終點直接為起點
+  {
+    cout << step << endl;
+    return;
+  }
+  if(vis[t]) //標記過的不再走一遍
+    continue;
+  vis[k]=1; //標記
+  // 迭代器遍歷所有與當前點相鄰的點vector是鄰接表
+  for(vector<int>::iterator it=v[k].begin();it!=v[k];++it){
+    q.push(make_pair(*it,step+1));
+  }
+}
+```
+
+## 2D BFS
+
+- 需要釐清的是平面和直角坐標系不同,2D前面的為y後面為x,下加上減，右加左減
+
+```c++
+cosnt int d[4][2]={
+  {1,0},
+  {-1,0},
+  {0,1},
+  {0,-1}
+};
+// ...
+while(!q.empty()){
+  //...
+  for(int i=0;i<4;i++){
+    int nx = x+d[i][0];
+    int ny = x+d[i][1];
+    if(//判斷越界)
+    q.push(make_pair(nx,ny));
+  }
+}
+```
+
+## 01 BFS
+
+- 適合在邊權值為0or1時使用,`O(E+VlogV)`比Dijkstra有效率
+- process: we only put a vertex in the queue if it has been relaxed by a previous vertex `(distance is reduced by travelling on this edge)`and we also keep the queue sorted by distance from source at every point of time
+- for edge 0 means they lie on the same level, 1 means they lie on the below
+- `our queue contains elements of level L[u] or L[u] + 1. And we also know that for an edge (u,v) , L[v] is either L[u] or L[u] + 1`
+- Thus , if the vertex `"v"` is relaxed and has the same level ,we can push it to the front of our queue and if it has the very next level ,we can push it to the end of the queue
+
+### implement
+
+- use STL deque to implement
+
+1. Remove top element `To get vertex for BFS`
+2. Insert At the beginning `To push a vertex with same level`
+3. Insert At the ended `To push a vertex on next level`
+
+```c++
+for all v in vertices:
+ dist[v] = inf
+dist[source] = 0;
+deque d
+d.push_front(source)
+while d.empty() == false:
+ vertex = get front element and pop as in BFS.
+ for all edges e of form (vertex , u):
+  if travelling e relaxes distance to u:
+   relax dist[u]
+   if e.weight = 1:
+    d.push_back(u)
+   else:
+    d.push_front(u)
+```
+
+### Leetcode 2290
+
+- 將障礙物當成1,空格當成0可以推導出權只有0或1,使用01BFS會比Dijkstra快
+- 找出從頭到尾的最短路徑即可
+
+```c++
+#include <climits>
+#include <deque>
+#include <utility>
+#include <vector>
+using namespace std;
+class Solution {
+public:
+  int minimumObstacles(vector<vector<int>> &grid) {
+    int r = grid.size();
+    int c = grid[0].size();
+    deque<pair<int, int>> dq{{0, 0}};
+    vector<vector<int>> dist(r, vector<int>(c, INT_MAX));
+    dist[0][0] = 0;
+    vector<int> dx = {1, -1, 0, 0};
+    vector<int> dy = {0, 0, 1, -1};
+    while (!dq.empty()) {
+      auto [x, y] = dq.front();
+      dq.pop_front();
+      for (int i = 0; i < 4; i++) {
+        int nx = x + dx[i];
+        int ny = y + dy[i];
+        if (nx >= 0 && nx < r && ny >= 0 && ny < c) {
+          int d = dist[x][y] + grid[nx][ny];
+          if (d < dist[nx][ny]) {
+            dist[nx][ny] = d;
+            grid[nx][ny] == 0 ? dq.push_front({nx, ny})
+                              : dq.push_back({nx, ny});
+          }
+        }
+      }
+    }
+    return dist[r - 1][c - 1];
+  }
+};
+```
+
+# 4.Floyd
+
+- 為多源最短路,可以處理負權邊但沒辦法處理負環,本質上就是暴力解
+- 使用鄰接表存最短路徑`dis[i][j]表示i到j的最短路徑`,外層枚舉中間點,中間枚舉起點,內層枚舉終點
+- 當三個點互不相同的時候進行鬆弛操作,如果中間點之後的路程比原路更短,更新距離,接著更新中間點進行n次得到答案
+- 時間複雜度因為三層for為`O(n^3)`
+- dis要初始化成正無窮,否則鬆弛會失效
+
+## 模板
+
+```c++
+for(int k=1;k<=n;k++) //枚舉中間點
+  for(int i=1;i<=n;i++) //枚舉起點
+    if(i != k)
+      for(int j=1;j<=n;j++)//枚舉終點
+        if(i!=j && k!=j)
+          dis[i][j] = min(dis[i][j],dis[i][k]+dis[k][j]); //狀態轉移方程,也就是鬆弛操作
+```
