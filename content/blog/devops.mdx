@@ -1,0 +1,290 @@
+---
+title: Devops
+description: 學習Devops
+date: 2024-12-21
+tags: ["code", "golang"]
+---
+
+## List
+
+1. Use Kubernetes to deploy the environment `EKS cluster`
+2. Use Docker to build the image for program `image`
+3. Use gitOPS to build the CICD stream
+
+- CI:Git action
+- CD:GITOPS `ArgoCD`
+
+4. EC2 to push the website on domain with nginx to load balance
+5. Helm Chart to manage the environment
+
+## Flow Chart
+
+```text
+Ingress control -> LoadBalance(DNS) -> Export
+```
+
+## DockerFile編寫
+
+- base 當作基礎,使用gcr小化image
+- 需要依照部署環境build執行檔
+  - amd or arm
+- example for linux
+
+```shell
+ docker buildx build --platform linux/amd64 -t peter123ouob/mdb:v1.2 .
+```
+
+```Dockerfile
+FROM golang:1.23 AS base
+
+WORKDIR /app
+
+COPY go.mod .
+
+RUN go mod download
+
+COPY . .
+
+RUN go build -o main .
+
+FROM gcr.io/distroless/base
+
+COPY --from=base /app/main .
+
+EXPOSE 8089
+
+CMD ["./main"]
+```
+
+### build and push
+
+```bash
+docker build -t peter123ouob/mdb:v1 .
+docker push peter123ouob/mdb:v1
+```
+
+## Kubernetes邊寫
+
+- 使用manifest規格編寫,而不是直接部署在pod上,避免無法使用副本集控制器部署
+
+  1. deployment
+
+  ```yaml
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+  name: mdb
+  labels:
+    app: mdb
+  spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mdb
+  template:
+    metadata:
+      labels:
+        app: mdb
+    spec:
+      containers:
+        - name: mdb
+          image: peter123ouob/mdb:v1
+          ports:
+            - containerPort: 8089
+  ```
+
+  2. service
+
+  ```yaml
+  apiVersion: v1
+  kind: Service
+  metadata:
+  name: mdb
+  labels:
+    app: mdb
+  spec:
+  ports:
+    - port: 80
+      targetPort: 8089
+      protocol: TCP
+  selector:
+    app: mdb
+  type: ClusterIP
+  ```
+
+  3. Ingress
+
+  ```yaml
+  apiVersion: networking.k8s.io/v1
+  kind: Ingress
+  metadata:
+  name: mdb
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+  spec:
+  ingressClassName: nginx
+  rules:
+    - host: peterdefer0822.store
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: mdb
+                port:
+                  number: 80
+  ```
+
+### 創建cluster
+
+- 可以使用aws的cloudfront查看stack和log
+
+```shell
+ eksctl create cluster --name mdb-cluster --region us-east-1
+```
+
+### apply k8s
+
+```shell
+kubectl apply -f deployment.yaml
+kubectl apply -f service.yaml
+kubectl apply -f ingress.yaml
+```
+
+### k8s get
+
+```shell
+kubectl get node # 查看node
+kubectl get ing # 查看正在運行服務
+kubectl get svc # 查看svc
+kubectl get nodes -o wide
+kubectl get logs [name from pods] # 查看log
+```
+
+### 更改node
+
+```shell
+kubectl edit svc mdb
+```
+
+1. 將type從ClusterIP變為NodePort
+2. 使用kubectl get pods拿到NodePort 映射的port
+3. 使用kubectl get nodes -o wide拿到外部訪問IP
+
+## Nginx control ingress
+
+- 安裝ingress control
+
+```shell
+ kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.0-beta.0/deploy/static/provider/aws/deploy.yaml
+```
+
+- 查看獲得name
+
+```shell
+kubectl get pods -n ingress-nginx
+```
+
+- edit
+
+```shell
+ kubectl get edit -n ingress-nginx-controller-6568cc55cd-gnpmp -n ingress-nginx
+```
+
+### 配置Nginx
+
+- 使用kubectl get ing 拿到Address訪問後發現是404,原因為配置ingress yaml時使用nginx映射到host
+- 因此需要拿到Address的IP並且將她映射到設定的host上才行
+
+1. netlookup Address
+2. sudo vim /etc/hosts 新增映射
+
+- example
+
+```text
+
+44.123.22.1 helloworld.com
+
+```
+
+## Helm
+
+- 使用helm可以將docker image的tag變成類似變數的形式,取代在deployment yaml下的硬編碼
+
+### 安裝
+
+```shell
+
+brew install helm
+helm version # 注意golang version
+
+```
+
+### 建立helm應用
+
+```shell
+helm create mdb-chart
+cd helm
+```
+
+- helm 中主要有三個檔案
+
+  1. Chart yaml
+
+     - 提供圖表數據,可以假定為元數據
+
+  2. values yaml
+
+  - 內容將被template當變數使用
+
+  ```yaml
+  # values.yaml
+  replicaCount: 1
+
+  image:
+    repository: peter123ouob/mdb
+    pullPolicy: IfNotPresent
+    tag: "10008891570"
+
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: chart-example.local
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+  ```
+
+  3. template
+
+     - 建議使用k8s的manifest取帶原先全部內容
+
+  - 更改後的內容
+
+  ```yaml
+  # deployment.yaml
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+  name: mdb
+  labels:
+    app: mdb
+  spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mdb
+  template:
+    metadata:
+      labels:
+        app: mdb
+    spec:
+      containers:
+        - name: mdb
+          image: peter123ouob/mdb:{{ .Values.image.tag }}
+          ports:
+            - containerPort: 8080
+  ```
