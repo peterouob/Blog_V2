@@ -144,6 +144,8 @@ docker push peter123ouob/mdb:v1
  eksctl create cluster --name mdb-cluster --region us-east-1
 ```
 
+![ec2](../../public/ec2.png)
+
 ### apply k8s
 
 ```shell
@@ -158,8 +160,10 @@ kubectl apply -f ingress.yaml
 kubectl get node # 查看node
 kubectl get ing # 查看正在運行服務
 kubectl get svc # 查看svc
+kubectl get svc -n [namespace] # 查看特定namespace
 kubectl get nodes -o wide
-kubectl get logs [name from pods] # 查看log
+kubectl get logs [name from pods] # 查看logs
+kubectl get deploy # 查看部署檔
 ```
 
 ### 更改node
@@ -168,7 +172,7 @@ kubectl get logs [name from pods] # 查看log
 kubectl edit svc mdb
 ```
 
-1. 將type從ClusterIP變為NodePort
+1. 將type從ClusterIP變為NodePort,目的是讓cluster產生的兩個ec2都能訪問
 2. 使用kubectl get pods拿到NodePort 映射的port
 3. 使用kubectl get nodes -o wide拿到外部訪問IP
 
@@ -191,6 +195,8 @@ kubectl get pods -n ingress-nginx
 ```shell
  kubectl get edit -n ingress-nginx-controller-6568cc55cd-gnpmp -n ingress-nginx
 ```
+
+![load balance](../../public/lb.png)
 
 ### 配置Nginx
 
@@ -288,3 +294,174 @@ cd helm
           ports:
             - containerPort: 8080
   ```
+
+## CICD
+
+- CI最後由Helm產生的版本資訊會被CD抓取並部署到k8s cluster
+
+### CI flowchart
+
+![ci](../../public/ci.png)
+
+### CD flowchart
+
+![cd](../../public/cd.png)
+
+## write the git action
+
+```yaml
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "helm/**"
+      - "k8s/**"
+      - "README.md"
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Set up Go 1.23
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.22
+      - name: Build
+        run: go build -o mdb
+      - name: Test
+        run: go test ./...
+
+  code-quality:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.56.2
+
+  push:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build and Push action
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/mdb:${{ github.run_id }}
+
+  update-newtag-in-helm-chart:
+    runs-on: ubuntu-latest
+    needs: push
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.TOKEN }}
+      - name: Update tag in Helm chart
+        run: |
+          sed -i 's/tag: .*/tag: "${{ github.run_id }}"/' helm/mdb-chart/values.yaml
+      - name: Commit and push changes
+        run: |
+          git config --global user.email "hellolinpeter@gmail.com"
+          git config --global user.name "peterouob"
+          git add helm/mdb-chart/values.yaml
+          git commit -m "Update tag in Helm chart"
+          git push
+```
+
+- 如果成功的話可以在DockerHub中找到最新創建的image且tag和最新版本的repo中helm的Values yaml裡面的一樣
+
+## ArgoCD
+
+### install
+
+```shell
+kubectl create namespace argocd
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+```
+
+### access UI
+
+```shell
+kubectl patch svc argocd-server -n argocd -p '{"spec": {"type": "LoadBalancer"}}'
+```
+
+### Get the Loadbalancer service IP
+
+- 獲得ip後要等LoadBalance配置完成才能存取
+
+```shell
+kubectl get svc argocd-server -n argocd
+```
+
+### login ArgoCD
+
+```text
+username:admin
+password另外獲得
+```
+
+#### get password
+
+```shell
+kubectl get secrets -n argocd # 獲得服務
+kubectl edit secret argocd-initial-admin-secret -n argocd # 查看服務設定檔
+echo [password] | base64 --decode # 解碼密碼後的才是
+```
+
+## 配置ArgoCD
+
+- 設置selfHeal是由於我們syncPolicy設為automated,但假設今天手動訪問部署檔並更動,發生錯誤時ArgoCD會自動修復
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mdb
+  finalizers: []
+spec:
+  destination:
+    name: ""
+    namespace: default
+    server: https://kubernetes.default.svc
+  source:
+    path: helm/mdb-chart
+    repoURL: https://github.com/peterouob/gocloud.git
+    targetRevision: HEAD
+    helm:
+      valueFiles:
+        - values.yaml
+  sources: []
+  project: default
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+```
+
+![argocd](../../public/argocd.png)
