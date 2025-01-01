@@ -1,0 +1,45 @@
+---
+title: WireShark 抓包
+description: 學習wireShark
+date: 2025-1-01
+---
+
+## WireShark 抓包原理和過程
+
+### WireShark 簡介
+- WireShark為網路封包分析程式,功能是竟可能截取網路封包,並顯示詳細封包資料
+- WireShark使用WinPCAP做為接口,直接與網卡進行數據報文交換
+
+## WireShark抓包及快入定位數據包技巧
+- 開啟WireShark默認為混雜模式,接收所有經過網卡得數據包,不驗證MAC位址
+- 普通模式為WireShark的另一種模式,只接收本機的包,包鍋廣播包,傳遞給上層程序,其他的一率丟棄
+  - Stop後點擊Capture中的option可以看到選項
+
+### 常見協議包
+1. ARP
+2. ICMP
+3. TCP
+4. UDP
+5. DNS
+6. HTTP
+
+## Filter
+
+### TCP
+- `tcp`
+1. `tcp.flags.ack==1`
+2. `tcp.flags.fn==1`
+3. `tcp.flags.syn==1`
+
+### Arp
+- `arp`
+
+### UDP
+- `udp`
+- oicq or dns base on udp
+- 客戶端查詢DNS一班不超過512byte,因此一般都只查詢UDP包,避免等待tcp三次握手的時間
+
+## IP
+- `ip.src_host == [ip address]`
+
+
