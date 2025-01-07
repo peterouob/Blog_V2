@@ -1,0 +1,38 @@
+---
+title: 靈神題單
+description: 滑動窗口
+date: 2025-1-01
+tags: ["code", "c++", "algo"]
+---
+
+## 定長滑窗題目
+1. 入:下標為i的算進入窗口,更新相關的統計量,如果`i<k-1`則重複第一步不繼續
+2. 更新:更新答案,一般是更新最大值or最小值
+3. 出:下標為`i-k+1`的算離開窗口,更新相關統計量
+
+### Leetcode 1456
+- 統計值到k窗口大小的母音次數
+- 不到k窗口大小繼續塞值統計,超過的話紀錄最大值
+- 超過窗口大小將最舊的移出,如果是母音要減掉一次統計
+```c++
+class Solution {
+public:
+    int maxVowels(string s, int k) {
+        int ans=0;
+        int r=0;
+        for(int i=0;i<s.size();i++){
+            if(s[i] == 'a' || s[i] == 'e' || s[i] == 'i' || s[i] == 'o' || s[i] == 'u')
+                r++;
+            if(i < k-1)
+                continue;
+            ans = max(ans,r);
+            char out = s[i-k+1];
+            if(out == 'a' || out == 'e' || out == 'i' || out == 'o' || out == 'u')
+                r--;
+        }
+        return ans;
+    }
+};
+```
+
+
