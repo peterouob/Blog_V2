@@ -35,4 +35,63 @@ public:
 };
 ```
 
+### Leetcode 643
+```c++
+class Solution {
+public:
+    double findMaxAverage(vector<int>& nums, int k) {
+       double sum = 0;
+       double max_sum = INT_MIN;
+       for(int i=0;i<nums.size();i++){
+            sum += nums[i];
+            if(i < k-1)
+                continue;
+            max_sum = max(max_sum,sum);
+            int out = nums[i-k+1];
+            sum -= out;
+       }
+       return max_sum/k;
+    }
+};
+```
 
+### Leetcode 1343
+```c++
+class Solution {
+public:
+    int numOfSubarrays(vector<int>& arr, int k, int threshold) {
+        int sum = 0;
+        int n = 0;
+        for(int i=0;i<arr.size();i++){
+            sum += arr[i];
+            if(i < k-1)
+                continue;
+            if(sum/k >= threshold)
+                n++;
+            int out = arr[i-k+1];
+            sum -= out;
+        }
+        return n;
+    }
+};
+```
+
+### Leetcode 2090
+```c++
+class Solution {
+public:
+    vector<int> getAverages(vector<int>& nums, int k) {
+        vector<int> ans(nums.size(),-1);
+        long long sum = 0;
+        for(int i=0;i<nums.size();i++){
+            sum += nums[i];
+            if(i < (2*k))
+                continue;
+            
+            ans[i-k]=sum/(2*k+1);
+            sum -= nums[i-(2*k)];
+        }
+        return ans;
+    }
+};
+```
