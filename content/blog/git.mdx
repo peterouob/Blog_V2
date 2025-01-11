@@ -1,3 +1,10 @@
+---
+title: 紀錄git error
+tags: ["code"]
+date: 2024-10-21
+tags: ["git"]
+---
+
 1. git pull
 2. git branch [name] # new branch
 3. git checkout [name] # 切換成name的branch
@@ -13,3 +20,19 @@ git push --set-upstream origin overPassTurbo
 git checkout origin main
 git merge [branch name]
 git push origin main
+
+# 更新被拒絕，因為您目前分支的最新提交落後於其對應的遠端分支。
+
+1. 先從遠端fetch後merage再push
+
+```shell
+git fetch origin
+git merge origin/master
+git push
+```
+
+2. 強制push
+
+```shell
+git push -f
+```

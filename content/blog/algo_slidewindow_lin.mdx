@@ -95,3 +95,24 @@ public:
     }
 };
 ```
+
+## Leetcode 2379
+```c++
+class Solution {
+public:
+    int minimumRecolors(string blocks, int k) {
+        int cnt = 0;
+        int max_cnt = 0;
+        for(int i=0;i<blocks.size();i++){
+            if(blocks[i] == 'B')
+                cnt++;
+            if(i < k-1)
+                continue;
+            max_cnt = max(max_cnt,cnt);
+            if(blocks[i-k+1] == 'B')
+                cnt--;
+        }
+        return k-max_cnt;
+    }
+};
+```
