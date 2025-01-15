@@ -1,0 +1,96 @@
+---
+title: Limited Direct Execution
+description: operating systems three easy pieces筆記
+date: 2025-01-15
+---
+
+# Introduce
+
+### The operating system needs to somehow share the physical CPU among many jobs running seemingly at the same time
+- run one process for a little while, then run another one, and so forth
+- By time-sharing the CPU in this manner, virtualization is achieved
+
+### A few challenges in building such virtualization machinery
+- The first is performance
+  - how can we implement virtualization without adding excessive overhead to the system?
+- The second is control
+  - how can we run processes efficiently while retaining control over the CPU?
+
+# Limited Direct Execution
+
+## Basic direct execution protocol
+| OS                            | Program                  | 
+|-------------------------------|--------------------------|
+| Create entry for process list |                          |  
+| Allocate memory for program   |                          |   
+| Load program into memory      |                          |   
+| Set up stack with argc/argv   |                          |  
+| Clear registers               |                          |  
+| Execute call main()           |                          |  
+|                               | Run main()               |   
+|                               | Execute return from main |  
+| Free memory of process        |                          |   
+| Remove from process list      |                          |
+
+### few problems in our quest to virtualize the CPU
+- 該如何確保運行的程序不會做出我們不期望的事情,但任然是非常有效率的
+- When we are running the process, how does the os stop it from running and switch to another process
+
+# Problem Restricted Operations
+- What if the process wishes to perform some kind of restricted`限制` operation
+
+## How to perform restricted operations
+- A process must be able to perform I/O and some other restricted operations, but without giving the process complete control over the system.
+  How can the OS and hardware work together to do so?
+
+- if we wish to build a file system that checks permissions before granting access to file
+  - if we simply any user process issue IO to the disk, a process could simply read or write the entire disk, and thus all protections would be lost
+
+## User mode
+- we can run in user mode is restricted in what it can do
+  - for example, we are running in user mode; a process cannot issue IO requests; if we did, the os will kill the process
+
+### Introduce
+- user mode is kernel mode, which the operating system or kernel runs in. 
+  - In this mode, code that runs can do what it likes
+
+## However, what should a user process dfo when it wishes to perform time kind of privileged operation?
+- virtually all modern hardware provides the ability for user programs to perform a system call.
+  - to execute a system call, a program must execute a special **trap** instruction
+
+### Trap instruction
+- this instruction simultaneously jumps into the kernel and raises the privilege level to kernel mode
+  - in kernel mode, the system can perform whatever privileged operations are needed, and thus do the required work for the calling process
+  - when finished, the os calls ap special return-from-trap instruction, returns into the calling user program while simultaneously reducing the privilege level back to user mode
+
+- when we perform the trap instruction, the system must be careful.
+  - for example, the process will push the program counter, flags, ad a few other registers onto a per-process kernel stack
+  - the return-from-trap will pop these values off the stack and resume execution of the user mode program
+
+### How Does the trap know which code to run inside the os?
+- the calling process cannot specify an address to jump to. to jump anywhere into the kernel which clearly is a **Very Bad Idea**
+#### Trap Table
+- the kernel does so by setting up a trap table at boot time. When the machine boots up, it does so in privileged or kernel mode
+- One of the first things is
+  - tell the hardware what code to run when certain exceptional events occur. Once the hardware is informed, it remembers the location of these handlers until the machine is next rebooted
+- to specify the exact system call, a **system-call number** is usually assigned to each system call. it is valid the number when handling the system call inside the trap handler, and if it is, executes the corresponding code.
+- This level of indirection serves as a from of protection; user code cannot specify an exact address to jump to 
+- Trap table is a very powerful capability, it is also a privileged operation.
+
+### What horrible things could you do to a system if you could install your own trap table? Could you take over the machine?
+![](../../public/tt.jpeg)
+
+- In the first, the kernel initializes trap table, and the CPU remembers its location for subsequent use
+- In the second, the kernel sets up a few things before using a return-from-trap instruction to start th execution of the process
+  - switches the CPU to user mode and begins running the process.
+- When the process wishes to issue a system call,it turns back into the OS, which handles it and once again returns control via a return-from-trap
+  to the process.
+- The process then completes its work, and returns from main; At this point,OS cleans up, and we are done
+
+## Use Protected control Transefer
+- The hardware assists the OS by providing different modes of execution.
+  - In user mode, applications do not have full access to hardware resources.
+  - In kernel mode, the OS has access to the full resources of the machine.
+- Special instructions to trap into the kernel and return-from-trap back to
+  user-mode programs are also provided, as well as instructions that allow
+  the OS to tell the hardware where the trap table resides in memory.
