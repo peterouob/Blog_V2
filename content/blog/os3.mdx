@@ -36,7 +36,7 @@ date: 2025-01-15
 - 該如何確保運行的程序不會做出我們不期望的事情,但任然是非常有效率的
 - When we are running the process, how does the os stop it from running and switch to another process
 
-# Problem Restricted Operations
+# Problem 1. Restricted Operations
 - What if the process wishes to perform some kind of restricted`限制` operation
 
 ## How to perform restricted operations
@@ -94,3 +94,30 @@ date: 2025-01-15
 - Special instructions to trap into the kernel and return-from-trap back to
   user-mode programs are also provided, as well as instructions that allow
   the OS to tell the hardware where the trap table resides in memory.
+
+# Problem 2. Switching Between Processes
+- Switching between processes should be simple, right? But it actually is a little bit tricky
+  - If a process is running on the CPU this by definition means the OS is not running
+  - If the OS is not running, how can it do anything at all
+
+## How to regain control of the cpu
+- How can the operating system regain control of the CPU so that it can
+  switch between processes?
+
+### A Cooperative Approach Wait For System Calls
+- One approach that some systems have taken in the past is known as the **cooperative** approach
+  - In this style, the OS **trusts** the processes of the system to behave reasonably
+
+- How does a friendly process give up the CPU in this utopian world
+  - transfer control of the CPU to the OS quite frequently by making system calls
+    - for example, to open a file and subsequently read it, or to send a message to another machine, or to create a new process.
+- Systems like this often include an explicit **yield** system call,which does nothing except to transfer control
+  to the OS so it can run other processes
+- Application also transfers control to OS when they do something illegal`非法的`,
+  - if an application divides by zero 
+  - tries to access memory that it should not be able to access
+- it will generate a trap to the OS.The OS will then have control of the CPU again
+
+#### If a process (whether malicious, or just full of bugs) ends up in an infinite loop, and never makes a system call? What can the OS do then?
+
+### A Non-Cooperative Approach The OS Takes Control

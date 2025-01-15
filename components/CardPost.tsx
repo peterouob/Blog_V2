@@ -9,8 +9,8 @@ export function CardPost() {
 
     return (
         <>
-            <section className="max-w-full lg:py-10 flex justify-center items-center">
-                <div className="px-8 max-w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+            <section className=" sm:max-w-full lg:py-10 flex justify-center items-center ">
+                <div className="px-8 max-w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 sm:gap-2">
                     {lastPost.map((post, index) => (
                         <div
                             key={post.slug}
