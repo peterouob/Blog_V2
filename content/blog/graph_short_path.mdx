@@ -50,7 +50,7 @@ int main(){
 ```
 
 ## 圖分類鄰接表
-
+### 鏈式前向星
 - 使用前向星實現
   - 雙向:`add(y,x,w)`
 - 使用h當作頭指針數組，將會紀錄上一個指針的下標
@@ -83,6 +83,51 @@ int main()
 }
 ```
 
+- 遍歷
+```c++
+int cur = start;
+for(int i = head[cur];i != 0; i = edge[i].next)
+```
+
+## 詳解鏈式前向星
+- 基本結構體存node
+```c++
+struct Edge {
+  int next;
+  int to;
+}edge[1000000];
+```
+- 儲存起點
+```c++
+int head[20000];
+```
+
+- 指針
+```c++
+int cnt;
+```
+
+### 逐步分析
+- 輸入1,2代表1連向2
+```c++
+cnt ++; //當作結構體下標
+head[1] = cnt;
+edge[cnt].to = 2; //節點1的兒子是2
+```
+- 輸入1,3但表1連向3
+```c++
+cnt ++;
+head[1] = cnt;
+edge[cnt].to = 3;
+```
+- 此時會發現如果這樣寫,原本的2就被擠掉,因此要改成
+```c++
+cnt ++;
+edge[cnt].to = 3; //1連向3
+edge[cnt].next = head[1]; //3的兄弟是2
+head[1] = cnt;//更新head
+```
+### Vector
 - 使用vector
 - 雙向:`v[y].push_back(edge(x,w));`
 
@@ -322,5 +367,137 @@ int main() {
         cout << "-1" << endl;
     }
   }
+}
+```
+
+## P1359
+```c++
+#include <bits/stdc++.h>
+using namespace std;
+
+int a[201][201];
+
+int main(){
+    int n;cin >> n;
+    memset(a,0x3f,sizeof(a));
+    for(int i=1;i<=n;i++){
+        for(int j=i;j<=n;j++){
+            if(i == j) a[i][j] = 0;
+            else {
+                int v = 0;cin >> v;
+                a[i][j] = v;
+            }   
+        }
+    }
+
+    for(int k=1;k<=n;k++){
+        for(int i=1;i<=n;i++){
+            for(int j=1;j<=n;j++){
+                a[i][j] = min(a[i][j],a[i][k]+a[k][j]);
+            }
+        }
+    }
+    cout << a[1][n] << endl;
+}
+```
+
+# 5. Dijkstra
+- 計算非負權重圖形可以使用來找最短路徑
+1. 選擇源點到哪個點的距離最近且未被訪問
+2. 標記該最近點
+3. 更新訪問節點到源點的距離
+
+## 模板
+```c++
+void dijkstra(){
+  memset(dis,127/3,sizeof(dis));
+  v[1] = 1;
+  dis[1] = 0;
+  for(int i=1;i<=n;i++){
+    int k = 0;
+    for(int j=1;j<=n;j++) //找出距離最近的點
+      if(!v[j] && (k == 0 || dis[j] < dis[k]))
+        k = j;
+    // 紀錄點
+    v[k] = 1;
+    for(int j=1;j<=n;j++)
+      if(!v[j] && dis[k]+a[k][j] < dis[j])
+        dis[j] = dis[k]+a[k][j]; //鬆弛
+  }
+}
+```
+- 從模板可以發現為`O(n^2)`後續會介紹Dijkstra的優化
+
+## P1359
+- 使用鏈式前向星儲存
+```c++
+struct Edge {
+  int node; //連向的node
+  int val; // 當前邊權重
+  int next; //更新node
+}edge[100000]
+
+int head[20000];
+```
+- 鬆弛
+```c++
+if(!vis[edge[i].node] && dis[edge[i].node] > dis[cur]+edge[i].val)
+                dis[edge[i].node] = dis[cur]+edge[i].val;
+```
+- 完整代碼
+```c++
+#include <bits/stdc++.h>
+using namespace std;
+
+#define ten 1000000
+#define two 20000
+
+struct Edge {
+    int node;
+    int val;
+    int next;
+}edge[ten];
+
+int head[two];
+int cnt = 0;
+
+void add(int a,int b,int c){
+    cnt++;
+    edge[cnt].node = b;
+    edge[cnt].val = c;
+    edge[cnt].next = head[a];
+    head[a] = cnt;
+}
+
+int main(){
+    bool vis[two] = {0};
+    long long dis[two];
+    int n,m,s;cin >> n >> m >> s;
+    for(int i=1;i<=n;i++) dis[i] = INT_MAX;
+    for(int i=0;i<m;i++){
+        int u,v,w;
+        cin >>u>>v>>w;
+        add(u,v,w);
+    }
+    dis[s] = 0;
+    int cur = s;
+    long long mindist;
+    while(!vis[cur]){
+        vis[cur] = true;
+        for(int i=head[cur];i != 0;i=edge[i].next){
+            if(!vis[edge[i].node] && dis[edge[i].node] > dis[cur]+edge[i].val)
+                dis[edge[i].node] = dis[cur]+edge[i].val;
+        }
+        mindist = INT_MAX;
+        for(int i=1;i<=n;i++){
+            if(!vis[i] && mindist > dis[i]){
+                mindist = dis[i];
+                cur = i;
+            }
+        }
+    }
+    for(int i=1;i<=n;i++)
+        printf("%lld ",dis[i]);
+    cout << endl;
 }
 ```
