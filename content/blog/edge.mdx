@@ -273,3 +273,54 @@ for(int k=1;k<=n;k++) //枚舉中間點
         if(i!=j && k!=j)
           dis[i][j] = min(dis[i][j],dis[i][k]+dis[k][j]); //狀態轉移方程,也就是鬆弛操作
 ```
+
+## P1119
+- 模板題
+```c++
+#include <cstring>
+#include <iostream>
+using namespace std;
+
+int n, m;
+int t[201];
+int dis[201][201];
+int q;
+
+const int INF = 0x3f3f3f;
+
+int main() {
+  cin >> n >> m;
+  memset(dis, INF, sizeof(dis));
+  int inf = dis[0][0];
+  for (int i = 1; i <= n; i++)
+    dis[i][i] = 0;
+  for (int i = 1; i <= n; i++)
+    cin >> t[i];
+  for (int i = 1; i <= m; i++) {
+    int x, y, w;
+    cin >> x >> y >> w;
+    dis[x + 1][y + 1] = dis[y + 1][x + 1] = w;
+  }
+
+  cin >> q;
+  int k = 1;
+  while (q--) {
+    int x, y, w;
+    cin >> x >> y >> w;
+    for (; t[k] <= w && k <= n; k++)
+      for (int i = 1; i <= n; i++)
+        if (i != k)
+          for (int j = 1; j <= n; j++)
+            if (i != j && j != k)
+              dis[i][j] = dis[j][i] = min(dis[i][j], dis[i][k] + dis[k][j]);
+    if (t[x + 1] > w || t[y + 1] > w)
+      cout << "-1" << endl;
+    else {
+      if (dis[x + 1][y + 1] < inf)
+        cout << dis[x + 1][y + 1] << endl;
+      else
+        cout << "-1" << endl;
+    }
+  }
+}
+```
