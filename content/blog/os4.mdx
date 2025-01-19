@@ -1,7 +1,7 @@
 ---
 title: CPU Scheduling
 description: operating systems three easy pieces筆記
-date: 2025-01-15
+date: 2025-01-18
 ---
 
 # Introduce
@@ -108,3 +108,69 @@ date: 2025-01-15
   - task perform no I/O
 - But have still not solved the problem of the fundamental`基本的` invability`不可變性` of the OS to see into the futurer
 - Building a scheduler that uses the recent past to **predict the future** is known as **multi-level feedback queue**
+
+# Homework
+# 1.
+```bash
+./scheduler.py -p SJF -l 200,200,200 -c
+./scheduler.py -p FIFO -l 200,200,200 -c
+```
+## SJF
+- turnaround time : (200+400+600)/3 = 400
+- response time : 200
+
+## FIFO
+- turnaround time : (200+400+600)/3 = 400
+- response time : 200
+
+# 2.
+```bash
+./scheduler.py -p SJF -l 100,200,300 -c
+```
+
+## SJF
+- turnaround time: 100+300+600 / 3 = 333.3
+- response time :
+  - Job 0 done 100 wait 0
+  - Job 1 done 300 wait 100
+  - Job 2 done 600 wait 300
+  - average : 0 + 100 + 300 / 3 = 133.3
+
+## FIFO
+- 跟SJF一樣
+
+# 3.
+```bash
+./scheduler.py -p RR -q 1 -l 100,200,300 -c
+```
+## RR
+- job 0 時間便n倍即為完成時間,其中的n為剩餘job數量
+- turnaround time :
+  - Job 0 完成前每個都執行300, Job 0 結束去掉Job 1和Job 2時間 = 298
+  - Job 1 完成500,去掉多算的job 2 = 499
+  - Job 2 完成600
+  - average : 600+499+298 / 3 = 465.67
+- response time :
+  - Job 0 done 1 wait 0
+  - Job 1 done 2 wait 1
+  - Job 2 done 3 wait 2
+  - average : 0 + 1 + 2 / 3 = 1
+# 4.
+- 當作業長度按照升序排列的時候
+
+# 5.
+- quantum length為多久切換job
+- 當job length相同且RR的quantum length和job length相同
+# 6.
+- it will increase
+```bash
+./scheduler.py -p SJF -l 100,100,100 -c
+./scheduler.py -p SJF -l 400,400,400 -c
+```
+# 7.
+- 當 quantum length <= job length
+  - when quantum lengths increase, the response time will increase
+- 回應時間的增長與量子長度呈線性關係，具體取決於有多少作業排在前面。
+- worst case
+  - 第n-1個job completion, get response time so the worstcase equal (n-1) * quantum length
+- 排在最後的作業需要等待所有 N−1 個作業完成它們的第一個時間片，這是最長的回應時間

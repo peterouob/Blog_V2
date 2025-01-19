@@ -300,6 +300,46 @@ public:
 };
 ```
 
+## Leetcode 1368
+- 同一row都當作0,非同一row都皆為1
+```c++
+class Solution {
+public:
+    int minCost(vector<vector<int>>& grid) {
+        int r = grid.size();
+        int c = grid[0].size();
+
+        vector<vector<int>> dict = {
+            {1,0},
+            {-1,0},
+            {0,1},
+            {0,-1}
+        };
+        deque<pair<int,int>> dq{{0,0}};
+        vector<vector<int>> dist(r,vector<int>(c,INT_MAX));
+        dist[0][0] = 0;
+
+        while(!dq.empty()){
+            auto [x,y] = dq.front();
+            dq.pop_front();
+            for(int i=0;i<4;i++){
+                int nx = x + dict[i][1];
+                int ny = y + dict[i][0];
+                if(nx >= 0 && nx < r && ny >=0 && ny < c){
+                    int d = (i+1 == grid[x][y]) ? 0 : 1;
+                    if(d + dist[x][y] < dist[nx][ny]) {
+                        dist[nx][ny] = d + dist[x][y];
+                        d == 0 ? dq.push_front({nx,ny})
+                               : dq.push_back({nx,ny});
+                    }
+                } 
+            }
+        }
+        return dist[r-1][c-1];
+    }
+};
+```
+
 # 4.Floyd
 
 - 為多源最短路,可以處理負權邊但沒辦法處理負環,本質上就是暴力解
