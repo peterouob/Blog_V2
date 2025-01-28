@@ -6,21 +6,21 @@ tags: ["git"]
 ---
 
 1. git pull
-2. git branch [name] # new branch
-3. git checkout [name] # 切換成name的branch
-4. git add [參數]
-5. git commit -m [msg]
+2. git branch `[name]` # new branch
+3. git checkout `[name]` # 切換成name的branch
+4. git add `[參數]`
+5. git commit -m `[msg]`
 
 # if not want to merge only want to push on new branch which you have been create
 
-git push --set-upstream origin overPassTurbo
+git push --set-upstream origin `[branch name]`
 
 # if want to merge
 
-git checkout origin main
-git merge [branch name]
-git push origin main
-
+1. git checkout origin main
+2. git merge [branch name]
+3. git push origin main
+4. git branch -d `<branch_name>`
 # 更新被拒絕，因為您目前分支的最新提交落後於其對應的遠端分支。
 
 1. 先從遠端fetch後merage再push
@@ -29,6 +29,7 @@ git push origin main
 git fetch origin
 git merge origin/master
 git push
+git branch -d <branch_name>
 ```
 
 2. 強制push
