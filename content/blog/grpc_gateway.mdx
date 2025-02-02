@@ -1,0 +1,99 @@
+---
+title: grpc gateway 學習
+description: 紀錄grpc gateway 使用
+date: 2025-02-02
+tags: ["code", "go"]
+---
+
+## 安裝包
+
+```bash
+go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@latest
+```
+
+## clone google proto library
+```bash
+git clone https://github.com/googleapis/googleapis.git ~/googleapis
+```
+
+## 編寫proto
+- 是先找到annotations.proto檔案,會在剛剛clone下來的底下,將它移到本地目錄,包括他使用到http.proto
+```proto
+
+synatx = "proto3";
+
+option go_package = ".";
+
+import "annotations.proto";
+
+message EchoRequest {
+  string name = 1;
+}
+
+message EchoResponse {
+  string name = 1;
+}
+
+service Echo {
+  rpc Echo(EchoRequest) returns (EchoResponse){
+    option (google.api.http) = {
+      post: "/echo"
+      body: "*"
+    };
+  }
+}
+```
+
+## 生成檔案
+- 使用protoc
+```bash
+protoc \
+    -I . \
+    -I /path/to/googleapis \
+    --go_out . \
+    --go-grpc_out . \
+    --grpc-gateway_out . \
+    *.proto
+```
+
+## 撰寫http請求
+
+- main.go
+```go
+func main() {
+	flag.Parse()
+	go func() {
+		server.InitGrpcServer(*port)
+	}()
+
+	server.GrpcGatewayServer(*port)
+}
+
+```
+
+- gateway.go
+```go
+func GrpcGatewayServer(port int) {
+	localIP := tools.GetLocalIP()
+	ctxr := context.Background()
+	ctx, cancel := context.WithCancel(ctxr)
+	defer cancel()
+
+	mux := runtime.NewServeMux()
+
+	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+
+	err := protobuf.RegisterEchoHandlerFromEndpoint(ctx, mux, fmt.Sprintf("%s:%d", localIP, port), opts)
+	tools.HandelError("register grpc gateway server", err)
+	tools.Log("register grpc gateway server success")
+	tools.Log(fmt.Sprintf("grpc gateway server listening on port %s:%d", localIP, 7111))
+	http.ListenAndServe(fmt.Sprintf("%s:%d", localIP, 7111), mux)
+}
+```
+
+## Request
+```bash
+curl -i -X POST -H "Content-Type: application/json" -d "{\"name\":\"peter\"}" http://192.168.0.101:7111/echo
+```
