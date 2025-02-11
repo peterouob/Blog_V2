@@ -13,7 +13,7 @@ tags: ["code", "go"]
 5. 對高併發下使用message queue來批量處理black list
 6. 使用Prometheus進行流量統計已變在不同情況下的不同方式
 
-## 定義Token Struct
+# 定義Token Struct
 
 - configs.go
 ```go
@@ -48,7 +48,7 @@ type Token struct {
 }
 ```
 
-## NewToken邏輯
+# NewToken邏輯
 ```go
 func NewToken(id int64) *Token {
 	TokenKey.Store(configs.Config.GetString("token.token_key"))
@@ -65,7 +65,7 @@ func NewToken(id int64) *Token {
 }
 ```
 
-## 建立基本Token
+# 建立基本Token
 ```go
 func (t *Token) CreateToken() {
 	claims := jwt.MapClaims{
@@ -128,5 +128,212 @@ func TestCreateToken(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, parse)
+}
+```
+
+# 將Token運用在Grpc服務上
+
+### 新增需要Token的service
+```proto
+message TokenTestRequest {}
+
+message TokenTestResponse {
+  string msg = 1;
+}
+
+service Token {
+    rpc TokenTest(TokenTestRequest) returns (TokenTestResponse);
+}
+```
+
+### 編寫Server
+```go
+package grpcserver
+
+import (
+	"context"
+	"fmt"
+	"github.com/peterouob/golang_template/api/protobuf"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+)
+
+type TokenTestServer struct {
+	protobuf.UnimplementedUserServer
+}
+
+func NewTokenTestServer() *TokenTestServer {
+	return &TokenTestServer{}
+}
+
+func (t TokenTestServer) TokenTest(ctx context.Context, in *protobuf.TokenTestRequest) (*protobuf.TokenTestResponse, error) {
+	userId := 123
+  return &protobuf.TokenTestResponse{
+		Msg: fmt.Sprintf("This is Token Test! your id is :%d", userId),
+	}, nil
+}
+```
+### 將服務開在8086
+```go
+package server
+
+import (
+	"fmt"
+	"github.com/peterouob/golang_template/api/protobuf"
+	"github.com/peterouob/golang_template/pkg/grpc_service/interceptors"
+	grpcserver "github.com/peterouob/golang_template/pkg/grpc_service/server"
+	"github.com/peterouob/golang_template/tools"
+	"google.golang.org/grpc"
+	"net"
+)
+
+func InitTokenServer() {
+	tools.Log("start grpc token server ...")
+	localIp := tools.GetLocalIP()
+	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", localIp, 8086))
+	tools.HandelError("listen errors ", err)
+
+	s := grpc.NewServer()
+
+	tokenServer := grpcserver.NewTokenTestServer()
+	protobuf.RegisterUserServer(s, tokenServer)
+	err = s.Serve(lis)
+	tools.HandelError("login serve errors ", err)
+}
+```
+
+# 編寫Interceptor驗證Token的存在
+- 這邊由於單向驗證的,使用UnaryServerInterceptor而非Stream
+### Server端接收方法
+  ```go
+  md, ok := metadata.FromIncomingContext(ctx)
+  ```
+  - 跟蹤源碼如下
+  ```go
+  func FromIncomingContext(ctx context.Context) (MD, bool) {
+	md, ok := ctx.Value(mdIncomingKey{}).(MD)
+	if !ok {
+		return nil, false
+	}
+	out := make(MD, len(md))
+	for k, v := range md {
+	  key := strings.ToLower(k)
+		out[key] = copyOf(v)
+	}
+	  return out, true
+}
+  ```
+  - 發現接收Context並且解析獲取值,返回的MD為一個Map且拷貝ToLower後的值
+
+### Client端傳送方法
+  ```go
+	  ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", fmt.Sprintf("Bearer %s", token))
+  ```
+  - 藉由源碼跟蹤可以發現第一個為context,接下來為傳入kv且回傳context
+  ```go
+  func AppendToOutgoingContext(ctx context.Context, kv ...string) context.Context 
+  ```
+
+## 解析Metadata已獲得TokenString
+- 從Client端和Server端觀察後發現只需要簡單的從Map中取值即可
+  ```go
+  authHeader, ok := md["authorization"]
+  ```
+- 此時的authHeader內第一個值會是剛剛藉由Client端傳入的
+  ```go
+  fmt.Sprintf("Bearer %s",token)
+  ```
+- 因此簡單對他做處理後即可
+  ```go
+  parts := strings.Split(authHeader[0]," ")
+  parts[0] == "Bearer"
+  parts[1] == token
+  ```
+## 驗證傳入Token
+```go
+func VerifyToken(tokenString string) *jwt.Token {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			tools.HandelError("parse token error type", err)
+		}
+		return []byte(fmt.Sprintf("%s", TokenKey.Load().(string))), nil
+	})
+	tools.HandelError("parse token error", err)
+	// TODO:count the fail and report to prometheus count
+	switch {
+	case token.Valid:
+		tools.Log("valid success token")
+	case errors.Is(err, jwt.ErrTokenMalformed):
+		tools.Log("error in Malformed token type")
+	case errors.Is(err, jwt.ErrTokenExpired) || errors.Is(err, jwt.ErrTokenNotValidYet):
+		tools.Log("error in token expired")
+	default:
+		tools.HandelError("couldn't handle this token", err)
+	}
+	return token
+}
+```
+## 獲取userId並傳入Context
+- 先轉為float64的原因是json解析後的操作
+```go
+uid := int64(token.Claims.(jwt.MapClaims)["userId"].(float64))
+ctx = context.WithValue(ctx, "uid", uid)
+return handler(ctx, req)
+```
+
+## 註冊Interceptors
+```go
+auth := interceptors.NewTokenInterceptor()
+s := grpc.NewServer(grpc.UnaryInterceptor(auth.UnaryServerInterceptor()))
+```
+
+## 修改TokenTest的Server端已獲得UserId
+```go
+func (t TokenTestServer) TokenTest(ctx context.Context, in *protobuf.TokenTestRequest) (*protobuf.TokenTestResponse, error) {
+	userId, ok := ctx.Value("uid").(int64)
+	if !ok {
+		return nil, status.Error(codes.InvalidArgument, "userId not found in context")
+	}
+	return &protobuf.TokenTestResponse{
+		Msg: fmt.Sprintf("This is Token Test! your id is :%d", userId),
+	}, nil
+}
+```
+
+# 測試Intercaptors
+```go
+func TestLoginServer(t *testing.T) {
+	conn, err := grpc.NewClient(":8085", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	assert.NoError(t, err)
+	defer func() {
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
+
+	c := protobuf.NewUserClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
+	defer cancel()
+
+	r, err := c.LoginUser(ctx, &protobuf.LoginUserRequest{
+		Email:    "admin",
+		Password: "admin",
+	})
+	assert.NoError(t, err)
+	t.Logf("Access Token :%s", r.AccessToken)
+	t.Logf("Refresh Token :%s", r.RefreshToken)
+	testToken(t, r.AccessToken)
+}
+
+func testToken(t *testing.T, token string) {
+	conn, err := grpc.NewClient(":8086", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	assert.NoError(t, err)
+	defer func() {
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
+	c := protobuf.NewUserClient(conn)
+	ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", fmt.Sprintf("Bearer %s", token))
+	_, err = c.TokenTest(ctx, &protobuf.TokenTestRequest{})
+	assert.NoError(t, err)
 }
 ```
