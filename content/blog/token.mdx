@@ -1,0 +1,132 @@
+---
+title: golang double token實現
+description: 使用golang邊寫雙token驗證
+date: 2025-02-11
+tags: ["code", "go"]
+---
+
+# 實現目標
+1. 基本Token驗證
+2. Refresh Token進行雙token驗證
+3. 使用Redis保存
+4. 新增Black list機制
+5. 對高併發下使用message queue來批量處理black list
+6. 使用Prometheus進行流量統計已變在不同情況下的不同方式
+
+## 定義Token Struct
+
+- configs.go
+```go
+package configs
+
+type Token struct {
+	AccessToken string `json:"access_token"`
+	AccessUuid  string `json:"access_uuid"`
+	AtExpires   int64  `json:"at_expires"`
+
+	RefreshToken     string `json:"refresh_token"`
+	RefreshUuid      string `json:"refresh_uuid"`
+	RefreshAtExpires int64  `json:"rat_expires"`
+}
+```
+
+- token.go
+```go
+var (
+	err        error
+	TokenKey   atomic.Value
+	RefreshKey atomic.Value
+)
+
+type Token struct {
+	UserId       int64         `json:"user_id"`
+	AccessId     string        `json:"access_id"`
+	AccessToken  string        `json:"access_token"`
+	RefreshId    string        `json:"refresh_id"`
+	RefreshToken string        `json:"refresh_token"`
+	Token        configs.Token `json:"token"`
+}
+```
+
+## NewToken邏輯
+```go
+func NewToken(id int64) *Token {
+	TokenKey.Store(configs.Config.GetString("token.token_key"))
+	RefreshKey.Store(configs.Config.GetString("token.refresh_key"))
+	token := &configs.Token{}
+	token.AccessUuid = uuid.NewString()
+	token.RefreshUuid = uuid.NewString()
+	token.AtExpires = time.Now().Add(time.Hour * 2).Unix()
+	token.RefreshAtExpires = time.Now().Add(time.Hour * 24 * 7 * 2).Unix()
+	return &Token{
+		UserId: id,
+		Token:  *token,
+	}
+}
+```
+
+## 建立基本Token
+```go
+func (t *Token) CreateToken() {
+	claims := jwt.MapClaims{
+		"access_id": t.Token.AccessUuid,
+		"exp":       t.Token.AtExpires,
+		"type":      "access",
+		"userId":    t.UserId,
+		"jti":       t.UserId,
+		"iat":       time.Now().Unix(),
+	}
+
+	tk := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	t.AccessToken, err = tk.SignedString([]byte(TokenKey.Load().(string)))
+	tools.HandelError("create token error", err)
+	t.AccessId = claims["access_id"].(string)
+}
+```
+
+## 測試Token
+```go
+package token
+
+import (
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/peterouob/golang_template/configs"
+	"github.com/peterouob/golang_template/pkg/verify"
+	"github.com/peterouob/golang_template/tools"
+	"github.com/stretchr/testify/assert"
+	"testing"
+	"time"
+)
+
+func TestNewToken(t *testing.T) {
+	tools.InitLogger()
+	configs.InitViper()
+	userId := int64(123)
+	token := verify.NewToken(userId)
+	assert.NotNil(t, token)
+	assert.Equal(t, userId, token.UserId)
+	assert.NotEmpty(t, token.Token.AccessUuid)
+	assert.NotEmpty(t, token.Token.RefreshUuid)
+	assert.Greater(t, token.Token.AtExpires, time.Now().Unix())
+	assert.Greater(t, token.Token.RefreshAtExpires, time.Now().Unix())
+	t.Logf("token: %v", token)
+	t.Logf("token.Token: %v", token.Token)
+}
+
+func TestCreateToken(t *testing.T) {
+	tools.InitLogger()
+	configs.InitViper()
+	userId := int64(123)
+	token := verify.NewToken(userId)
+	assert.Equal(t, token.AccessToken, "")
+	token.CreateToken()
+	assert.NotEqual(t, token.AccessToken, "")
+	t.Log(verify.TokenKey.Load().(string))
+
+	parse, err := jwt.Parse(token.AccessToken, func(token *jwt.Token) (interface{}, error) {
+		return []byte(verify.TokenKey.Load().(string)), nil
+	})
+	assert.NoError(t, err)
+	assert.NotNil(t, parse)
+}
+```
