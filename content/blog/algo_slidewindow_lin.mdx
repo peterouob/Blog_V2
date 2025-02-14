@@ -116,3 +116,87 @@ public:
     }
 };
 ```
+
+## Leetcode 1052
+```c++
+class Solution {
+public:
+    int maxSatisfied(vector<int>& customers, vector<int>& grumpy, int minutes) {
+        int c =  customers.size();
+        int ans = 0;
+        for(int i=0;i<c;i++){
+            if(grumpy[i] == 0){
+                ans+=customers[i];
+                customers[i] = 0;
+            }
+        }
+        int sum = 0;
+        int cur = 0;
+
+        for(int i=0;i<c;i++){
+            cur += customers[i];
+            if(i >= minutes)
+                cur -= customers[i-minutes];
+            sum = max(sum,cur);
+        }
+
+        return ans+sum;
+    }
+};
+```
+
+## Leetcode 2461
+```c++
+class Solution {
+public:
+    long long maximumSubarraySum(vector<int>& nums, int k) {
+       unordered_map<int, int> count; 
+        long long currentSum = 0, maxSum = 0; 
+        int left = 0; 
+
+        for (int right = 0; right < nums.size(); ++right) {
+            count[nums[right]]++;
+            currentSum += nums[right]; 
+
+            while (count[nums[right]] > 1 || (right - left + 1 > k)) {
+                currentSum -= nums[left];
+                count[nums[left]]--;
+                if (count[nums[left]] == 0) {
+                    count.erase(nums[left]); 
+                }
+                left++; 
+            }
+            if (right - left + 1 == k) {
+                maxSum = max(maxSum, currentSum);
+            }
+        }
+
+        return maxSum;
+    }
+};
+```
+
+## Leetcode1423
+### 思考
+- 先拿k張牌
+- 後續往右移動窗口等同於拿k+1張牌
+- 縮減窗口相當於丟去k-1張牌
+- 等同於原先拿k張牌的總和加上k+1張牌減去k-1張牌的值
+- 後續更新ans即可
+```c++
+#include <bits/stdc++.h>
+using namespace std;
+class Solution {
+public:
+    int maxScore(vector<int>& cardPoints, int k) {
+        int s = accumulate(cardPoints.begin(),cardPoints.begin()+k,0);
+        int ans = s;
+        int n = cardPoints.size();
+        for(int i=1;i<=k;i++){
+            s += (cardPoints[n-i]-cardPoints[k-i]);
+            ans = max(ans,s);
+        }
+        return ans;
+    }
+};
+```
