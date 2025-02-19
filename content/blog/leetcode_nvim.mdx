@@ -1,0 +1,40 @@
+---
+title: config leetcode nvim and login
+description: 紀錄坑
+date: 2023-07-05 09:55:02
+tags: ["nvim"]
+---
+
+## config in lazy vim 
+
+- plugin/init.lua
+```lua
+{
+  "kawre/leetcode.nvim",
+  dependencies = {
+    "nvim-telescope/telescope.nvim",
+    "nvim-lua/plenary.nvim",
+    "MunifTanjim/nui.nvim"
+  },
+  lazy = false;
+  opts = {}
+}
+```
+
+- ./init.lua
+```lua
+require("leetcode").setup({
+  lang = "cpp",  -- 你可以改成 "python" 或其他語言
+  storage = { home = vim.fn.expand("$HOME") .. "/.leetcode" }
+})
+```
+
+## login
+
+#### 使用F12查看Response Header中的SetCookie
+- 注意
+1. 因為Cookie過長所以會切成兩段,以Set-Cookie進行切分
+2. 內容值要看清楚以下為示範內容
+```text
+csrftoken=[cookie value];LEETCODE_SESSION=[leetcode_session value]; Domain=.leetcode.com; expires=Wed, 05 Mar 2025 16:38:03 GMT; HttpOnly; Max-Age=1209600; Path=/; SameSite=Lax;
+```
