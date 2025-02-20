@@ -2,7 +2,7 @@ export const siteConfig = {
     name: "Defer",
     description: "Nextjs 14",
     authors: "Defer",
-    copyright:"2024 Defer. All rights reserved",
+    copyright:"2025 Defer. All rights reserved",
     links: {
         instagram:"https://www.instagram.com/o_u_o_b_/",
         github:"https://github.com/peterouob?tab=repositories",

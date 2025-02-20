@@ -52,7 +52,7 @@ export const Card = ({
   return (
     <div
       className={cn(
-        "rounded-2xl h-full w-full p-10  overflow-hidden bg-black/60 dark:bg-zinc-400/4 shadow-lg " +
+        "rounded-2xl h-full w-full p-10  overflow-hidden bg-gray-800 dark:bg-zinc-400/4 shadow-lg " +
           "border border-transparent dark:border-white/[0.2] group-hover:border-slate-700 relative z-20",
         className
       )}
@@ -98,7 +98,7 @@ export const CardDescription = ({
 interface CardTagProps {
   className?:string
   children?: React.ReactNode
-  key?:  string | any | undefined
+  key:  string | any | undefined
 }
 
 export const CardTag = ({children,key,className} : CardTagProps) => {

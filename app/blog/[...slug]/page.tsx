@@ -4,6 +4,7 @@ import {MDXContent} from "@/components/MdxComponents";
 
 import "@/styles/mdx.css"
 import {Tag} from "@/components/Tags";
+import {TableOfContents} from "@/components/TableOfContents";
 
 interface PostPageProps {
     params: {
@@ -25,7 +26,8 @@ export default async function PostPage({params}:PostPageProps) {
     }
     return (
         <>
-                <article className="prose sm:prose-xl z-40 container py-10 dark:prose-invert lg:max-w-[80vw] mx-auto lg:mt-10 lg:rounded-2xl lg:mb-10">
+                <TableOfContents />
+                <article className="prose sm:prose-xl z-40 container py-10 dark:prose-invert dark:bg-gray-800 lg:max-w-[80vw] mx-auto lg:mt-10 lg:rounded-2xl lg:mb-10">
                     <h1 className="mb-2 lg:text-5xl">{post.title}</h1>
                     <div className="flex gap-4 m-3 lg:mt-10">
                         {post.tags?.map((tag) => (

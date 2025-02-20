@@ -3,17 +3,16 @@
 @tailwind utilities;
 
 @layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
+
   html, body {
-    font-family: monospace;
+    font-family: 'Poppins', 'Noto Sans TC', sans-serif;
     overflow-x: hidden;
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    box-sizing: border-box;
   }
-  ul li{
+  ul,li{
     @apply text-base lg:text-2xl
   }
   :root {
@@ -71,3 +70,6 @@
   }
 }
 
+html, body {
+
+}

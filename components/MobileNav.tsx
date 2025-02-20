@@ -19,7 +19,7 @@ export function MobileNav() {
                     variant="outline"
                     className="top-0 right-0 absolute m-4 w-10 px-0 sm:hidden z-40"
                 >
-                    <Menu className="h-5 w-5" />
+                    <Menu size={24} />
                 </Button>
             </SheetTrigger>
             <SheetContent side="right">
