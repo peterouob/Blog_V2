@@ -9,8 +9,9 @@
     overflow-x: hidden;
     margin: 0;
     padding: 0;
-    height: 100%;
     box-sizing: border-box;
+    min-height: 100vh;
+
   }
   ul,li{
     @apply text-base lg:text-2xl
@@ -68,8 +69,4 @@
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
   }
-}
-
-html, body {
-
 }
