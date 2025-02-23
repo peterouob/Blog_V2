@@ -1,0 +1,24 @@
+---
+title: 分散式系統設計筆記
+description: 學習分散式系統設計
+date: 2025-02-23
+tags: ["code","book"]
+---
+
+# 單節點模式
+
+## 使用分散式應用動機
+
+### 資源隔離性(isolation)
+1. 應用由兩個componment組成,分成Loader和面對User的server,必須保證面對user的server具備足夠資源避免Latency
+2. Loader維持最佳服務狀態
+  - user有高請求延遲時server依舊正常運作
+3. 發生Memory Leak or 過量的資源競爭
+  - 為容器拆分資源需求,確保背景資源載入器(Configuration Loader)比user服務先被Terminated
+
+### 團隊任務彈性
+1. Git保持本地同步
+  - 將Git同步工具作為單獨container deploy,可以在不同環境下重復使用
+  - 如果將每個服務都視為單個container,便沒辦法moudle重用Git同步工具
+
+# 邊車模式
