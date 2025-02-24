@@ -27,7 +27,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
   const sortedTags = sortTagsByCount(tags);
   return (
     <Aurora>
-      <div className="container lg:py-12 dark:bg-gray-800 bg-zinc-50 shadow-2xl rounded-xl lg:mb-10 z-40">
+      <div className="container dark:bg-gray-800 bg-zinc-50 shadow-2xl rounded-xl z-40">
         <div className="grid grid-cols-1 sm:grid-cols-12 lg:gap-3 mt-8">
           <div className="col-span-12 sm:col-span-12 md:col-span-8 lg:text-xl min-h-full">
             {displayPosts.map((post) => {
