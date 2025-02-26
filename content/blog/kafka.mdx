@@ -1,0 +1,98 @@
+---
+title: kafka範例
+description: 簡單使用docker deploy kafka and kafka ui 
+date: 2025-02-26
+tags: ["code","mq"]
+---
+
+
+# Kafka & Kafka UI Docker 配置與測試指南
+
+## Docker-Compose 配置
+- 新版本kafka使用kRaft取代zookeeper
+```yaml
+version: '3.8'
+services:
+  kafka:
+    image: 'bitnami/kafka:latest'
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    networks:
+      - my_bridge
+    environment:
+      - KAFKA_ENABLE_KRAFT=true
+      - KAFKA_CFG_NODE_ID=0
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+    volumes:
+      - kafka_data:/bitnami/kafka
+
+  kafka-ui:
+    container_name: kafka-ui
+    image: provectuslabs/kafka-ui:latest
+    ports:
+      - "82:8080"
+    networks:
+      - my_bridge
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=local
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9092
+      - DYNAMIC_CONFIG_ENABLED=true
+    depends_on:
+      - kafka
+    volumes:
+      - ./kui/config.yml:/etc/kafkaui/dynamic_config.yaml
+
+networks:
+  my_bridge:
+    driver: bridge
+```
+
+## 啟動
+```yaml
+docker compose up -d 
+```
+
+# 檢查kafka狀態
+```yaml
+docker logs kafka --follow
+```
+## 成功的話顯示
+```text
+INFO [KafkaServer id=0] started (kafka.server.KafkaServer)
+```
+
+# 測試kafka
+
+1. 進入容器
+```yaml
+docker exec -it kafka bash
+```
+2. 查看list
+```yaml
+kafka-topics.sh --bootstrap-server kafka:9092 --list
+```
+3. 建立topic
+```yaml
+kafka-topics.sh --bootstrap-server kafka:9092 --create --topic test-topic --partitions 1 --replication-factor 1
+```
+4. 重新查看
+- 會看到新的topic which name is test-topic
+```yaml
+kafka-topics.sh --bootstrap-server kafka:9092 --list
+```
+
+# 測試producer and consumer
+1. 啟動topic並發送訊息
+```yaml
+docker exec -it kafka kafka-console-producer.sh --broker-list kafka:9092 --topic test-topic
+```
+2. consumer 接收訊息
+```yaml
+docker exec -it kafka kafka-console-consumer.sh --bootstrap-server kafka:9092 --topic test-topic --from-beginning
+```

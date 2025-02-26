@@ -1,0 +1,36 @@
+<MermaidDiagram chart={`
+flowchart TD
+    A(["User Login/Register"]) -->|Successful| B["Generate Token"]
+    B --> C["Store Token in Redis"]
+    B <-->|Token Expired| D["Update User Info in Redis"]
+    A -->|Successful| E["Insert User Data in MySQL"]
+    E --> F["Message Queue listens to MySQL binlog"]
+    F --> G["Synchronize Data to Redis"]
+    C & G --> H(["Redis Cache"])
+    I(["Next Login"]) --> J["Retrieve Data from Redis"]
+    J -->|Use as Cache| A
+`} />
+
+<MermaidDiagram chart={`
+flowchart TD
+ subgraph SC["Service Components"]
+        A(["User Login/Register"])
+        K["etcd"]
+        L["gRPC Pool"]
+        N["Grafana"]
+        M["Prometheus"]
+  end
+    K -- Config Management --> A
+    L -- Manage Connections --> A
+    M -- Monitor & Report --> N
+    A -- Successful --> B["Generate Token"] & E["Insert User Data in MySQL"]
+    B --> C["Store Token in Redis"]
+    B <-- Token Expired --> D["Update User Info in Redis"]
+    E --> F["Message Queue listens to MySQL binlog"]
+    F --> G["Synchronize Data to Redis"]
+    C --> H(["Redis Cache"])
+    G --> H
+    M --> K
+`} />
+
+
