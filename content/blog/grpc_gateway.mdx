@@ -5,7 +5,7 @@ date: 2025-02-02
 tags: ["code", "go"]
 ---
 
-## 安裝包
+# 安裝包
 
 ```bash
 go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
@@ -58,7 +58,7 @@ protoc \
     *.proto
 ```
 
-## 撰寫http請求
+# 撰寫http請求
 
 - main.go
 ```go
@@ -96,4 +96,70 @@ func GrpcGatewayServer(port int) {
 ## Request
 ```bash
 curl -i -X POST -H "Content-Type: application/json" -d "{\"name\":\"peter\"}" http://:7111/echo
+```
+
+# 使用pool取代endpoint
+
+## Pool 核心取出UserClient
+```go
+func GetGRPCUserClient(cfg *configs.EtcdGrpcCfg) protobuf.UserClient {
+	// ...
+  conn := pool.GetConn()
+
+	newClient := protobuf.NewUserClient(conn)
+  // ...
+	return newClient
+}
+```
+
+## 將grpc service註冊到gateway上
+```go
+conn := grpcclient.GetGRPCUserClient(gw.Cfg)
+	if err := pb.RegisterUserHandlerClient(ctx, mux, conn); err != nil {
+		tools.ErrorMsg(fmt.Sprintf("Failed to register handler for %s: %v", gw.ServiceName, err))
+	} else {
+		tools.Logf("Successfully registered handler for %s", gw.ServiceName)
+	}
+```
+
+### 分析RegisterUserHandlerClient
+- 在他註解裡面有一段話
+  ```text
+    RegisterUserHandlerClient 將service User(在proto中定義)傳入mux中,
+    其中的handler將是在grpc endpoin中implement的UserClient
+    Note: 傳入的UserClient如果不經過正規方式(creating a grpc client etc.),將不會自動掉用interceptors
+    並且client會忽略http middleware
+  ```
+- 解析核心code
+  1. 其中code只有以下最主要的部分,其他為申明gateway的rpc path(在runtime.AnnotateContext中有分別)
+  2. MarshalerForRequest會自動判斷header中的Content Type,如果沒有的話已*為定
+  3. AnnotateContext 會儲存gprc請求得meta在context中,以便讓grpc流處理這些服務,類似http中的X-Forwarded-For,
+     但不同的是http主要用來追蹤原始ip,AnnotateContext則是將remoteAddr添加到context中
+  4. forward_User_RegisterUser_0 則是將grpc中的resp藉由Restful返回
+```go
+    func RegisterUserHandlerClient(ctx context.Context, mux *runtime.ServeMux, client UserClient) error {
+    mux.Handle(http.MethodPost, pattern_User_RegisterUser_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, path, runtime.WithHTTPPathPattern(path))
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		forward_User_RegisterUser_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+```
+
+## 為什麼要分析源碼
+- 就由剛剛解析的結果可以知道,他會是依照傳入的client去註冊mux的client,因此沒辦法將所有service都開同一個port上,儘管皆為同一個service
+
+# 獲得傳入的Token驗證
+- 新增runtime.WithIncomingHeaderMatcher方法並傳入自己得驗證
+  - 將會對傳入的header做httpRequest,如果符合Matcher邏輯,將值傳入metadata中
+```go
+	mux := runtime.NewServeMux(runtime.WithIncomingHeaderMatcher(tools.Matcher))
+  func Matcher(key string) (string, bool) {
+	  switch strings.ToLower(key) {
+	  case "authorization":
+		  return key, true
+	  default:
+		  return runtime.DefaultHeaderMatcher(key)
+	}
+}
 ```
