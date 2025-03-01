@@ -6,7 +6,7 @@ import { Tag } from "@/components/Tags";
 import { PostItem } from "@/components/PostItem";
 import { Aurora } from "@/components/Aur";
 
-const POST_PRE_PAGE = 5;
+const POST_PRE_PAGE = 4;
 
 interface BlogPageProps {
   searchParams: {
