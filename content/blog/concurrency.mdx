@@ -1,0 +1,187 @@
+---
+title: ostep concurrency
+description: ostep筆記
+date: 2025-03-13
+tags: ["os"]
+---
+
+# Introduce
+- 在thread中的context和在process的context非常像,不一樣的是process儲存在PCB而thrad儲存在TCB(thread control block)
+
+- 另一個不同點為stack,
+  - 在single thread中也就是process只有一個stack(single stack)
+  - 在multi thread process 中由於這些thread都是independently,因此每個thread都會有自己的stack來存放(thread-local storage)
+
+# The Heart Of The Problem
+- 在thread中有個嚴重的問題,假設有兩個thread(th1,th2)並且執行以下的asm
+```asm
+mov 0x8049a1c, %eax
+add $0x1, %eax
+mov %eax, 0x8049a1c
+# 從0x8049a1c拿出一個register並進行加1,再放回0x8049a1c
+# 預計%eax的值為52
+```
+- 執行流程為,假設eax register為counter=50
+  1. th1 獲得counter,counter=50
+  2. counter+1=51,此時發生context,執行th2
+  3. th2 獲得eax,但th2從address中拿到的register還是50(原因是thread拿到的是自己的private register,這個register為virtualized
+  by the context-switch code that saves and restores)
+  4. counter+1=51,此時另一個context又發生,th1回復執行
+  5. th1將值放回address
+  6. 原本counter預計拿到52但此時只有51
+- 此時這種問題稱為race condition,每次運行的結果都不一定一樣,稱為這個結果為不確定的(indeterminate)而非確定(deterministic)
+- 由於多個thread為race condition,因此稱為critical section
+  - critical section是訪問共享variable的地方,一定不能由多個thread同時執行
+
+## 關鍵術語
+1. critical section是訪問共享資源的一段程式,資源為變量或data structur
+2. race condition 出現在多個thread同時訪問critical section,他們都試圖更新資源,導致非期望結果
+3. indeterminate程式由一個或多個race condition組成,導致結果不是deterministic,並非我們期望的輸出
+4. mutual exclusion是為了避免這些問題,可以保證每次只有一個thread進入critical section,從而避免race
+
+# Locks
+- 在concurrency中鎖扮演非常重要的角色,而本身也很簡單,只有lock和unlock兩個函數
+  - lock 調用時,如果其他thread沒有鎖則調用的thread就會獲得鎖並且進入critical section,此時這個獲得鎖的thread叫做owner
+    - 當其他thread嘗試獲得鎖不會返回,這樣就能控制critical section中只會有一個thread
+  - unlock 調用時,如果沒有其他thread嘗試獲得鎖,則會閒置變成可用的
+    - 當有等待的thread時,會收到鎖狀態變化的通知,並且獲得鎖進入critical section
+- 而設計一個鎖需要考量以下3點
+  1. mutual exclusion 為主要限制其他thread進入critical section的方法
+  2. fairness 避免thread發生strave一直無法獲得鎖
+  3. performance,其中包括了thread爭搶,釋放的開銷,以及單CPU上多個thread的競爭
+
+## Controlling Interrupts
+1. 需要將系統設置為privileged operation(turn interrupts on and off),可能會遇到惡意程式調用lock而不釋放
+2. 沒有辦法在multi process上進行,多個thread在不同cpu上運行並且訪問critical section,interrupts會不知道要對哪個進行
+3. 長時間interrupts會導致系統問題,想像CPU因為interrupts的關係而miss掉disk finish request
+
+## Spin lock
+### A Failed Attempt: Just Using Loads/Stores
+```c
+typedef struct __lock_t { int flag; } lock_t;
+
+void init(lock_t *mutex) {
+  // 0 -> lock is available, 1 -> held
+  mutex->flag = 0;
+}
+
+void lock(lock_t *mutex) {  
+  while (mutex->flag == 1) // TEST the flag;
+    // spin-wait (do nothing)
+  mutex->flag = 1; // now SET it!
+}
+
+void unlock(lock_t *mutex) {
+  mutex->flag = 0;
+}
+```
+- 想法很簡單,當另一個thread調用lock時,嘗試獲得鎖的thread會不斷spin等待,值到unlock
+#### Problem
+1. performance,由於thread未獲取鎖時一直spin等待鎖釋放浪費時間,在single process上甚至沒辦法運行
+2. mutual exclusion,可能多個thread同時被標示為1,導致超過一個thread進入critical section
+
+### Test-And-Set (Atomic exchange)
+```c
+ int TestAndSet(int *old_ptr, int new) {
+  int old = *old_ptr; // fetch old value at old_ptr
+  *old_ptr = new; // store ’new’ into old_ptr
+  return old; // return the old value
+ }
+
+typedef struct __lock_t {
+  int flag;
+ } lock_t;
+
+void init(lock_t *lock) {
+// 0: lock is available, 1: lock is held
+  lock->flag = 0;
+}
+
+ void lock(lock_t *lock) {
+  while (TestAndSet(&lock->flag, 1) == 1); 
+    // spin-wait (do nothing)
+ }
+
+ void unlock(lock_t *lock) {
+  lock->flag = 0;
+ }
+```
+
+- TestAndSet主要做了以下事情,由於是atomic下運行,因此為同時發生
+  1. 返回old_ptr指向的舊值
+  2. 更新新值
+
+### 這個鎖的作用
+1. 假設有一個thread在運行,調用lock而沒有其他thread擁有鎖,因此flag為0,跳出while獲取鎖,**同時**也會將flag設為1,標誌為鎖已被擁有
+  - thread離開critical section時調用unlock將falg清0
+2. 當某一個thread已經有鎖時(flag=1),其他thread調用lock,TestAndSet返回1並且卡在while中spin
+  - 當flag被清0後會再次調用TestAndSet,返回0並且atomic將flag設為1從而獲得鎖
+
+#### Spin的問題
+- 利用CPU週期不斷spin值到有鎖可用,在single process上需要preemptive scheduling(不斷透過clock interrupts一個thread來運行其他thread),否則spin lock在單CPU上無法使用,因為一個spin的thread永遠不會放棄CPU
+
+### Evaluating Spin Locks
+1. mutual, 一次只能有一個thread進入critical section
+2. fairness, spin lock沒辦法保證fairness,spin的thread在race condition下可能會永遠spin,導致其他thread strave
+3. performance, 只有獲得lock的CPU不會spin,所以其他thread都會在unlock前浪費CPU時間
+  - 不過在multi process下性能不差,由於critical section很短,因此很快就會有所能用,不會浪費CPU週期
+
+## Load-Linked and Store-Conditional
+
+```c
+ int LoadLinked(int *ptr) {
+  return *ptr;
+ }
+ int StoreConditional(int *ptr, int value) {
+ 
+ if (no update to *ptr since LL to this addr) {
+  *ptr = value;
+  return 1; // success!
+ } else {
+    return 0; // failed to update
+  }
+ }
+``
+- load從內存取出一個值放入register
+- store condition 只有上一次加載的地址期間都沒更新時才會成功,同時更新剛才Load-Linked加載地址的值
+  - 成功時,返回1,並且將ptr指得值更新為value
+  - 失敗時,返回0,不會有任何動作
+
+## Fetch-And-Add
+```c
+int FetchAndAdd(int *ptr) {
+   int old = *ptr;
+   *ptr = old+1;
+   return old;
+ }
+
+typedef struct __lock_t {
+   int ticket ;
+   int turn;
+ }lock_t;
+
+void lock_init(lock_t *lock) {
+   lock->ticket = 0;
+   lock->turn = 0;
+}
+
+void lock(lock_t *lock) {
+  int myturn = FetchAndAdd(&lock->ticket);
+  while (myturn != lock->turn)
+    ; //spin
+}
+
+void unlock(lock_t *lock) {
+  lock->turn = lock->turn + 1;
+}
+```
+1. 使用了ticket和turn來構建lock,如果thread希望獲得lock,會先對ticket值執行一個atomic的獲取並相加
+2. 這個值為該thread的turn(myturn),根據全局共享的lock->turn變量,當某一個thread(myturn == lock->turn)時,則輪到這個thread進入critical section
+3. unlock則是增加turn,從而下一個等待的thread可以進入critical section
+
+### 重點改動
+- 這個方法保證了所有thread都能搶到lock,從而實現fairness,只要有一個thread獲得ticket值,他最後會被調用
+ - 之前的方法則不會保證fairness,比如基於TestAndSet,一個thread可能一直spin,即使其他thread在獲得鎖和釋放鎖
+
+
+## 自旋過多
