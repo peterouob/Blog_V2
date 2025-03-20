@@ -141,7 +141,7 @@ void init(lock_t *lock) {
     return 0; // failed to update
   }
  }
-``
+```
 - load從內存取出一個值放入register
 - store condition 只有上一次加載的地址期間都沒更新時才會成功,同時更新剛才Load-Linked加載地址的值
   - 成功時,返回1,並且將ptr指得值更新為value
@@ -184,4 +184,201 @@ void unlock(lock_t *lock) {
  - 之前的方法則不會保證fairness,比如基於TestAndSet,一個thread可能一直spin,即使其他thread在獲得鎖和釋放鎖
 
 
-## 自旋過多
+### 自旋過多
+- 假設兩個thread在single process上執行,其中一個thread持有鎖,被中斷導致另一個thread嘗試獲取鎖,此時因為鎖已經被持有了,因此自值到thread 0重新被resume後釋放鎖,因此假設有N個thread競爭一個鎖會產生浪費$N-1$個time slice,導致過多的cpu time被浪費
+
+## Avoid spin
+
+### Just Yield Baby
+- 想法很簡單,spin時放棄CPU,相比原先雖然好一點,但由於等到有鎖時喚醒的context switch成本也很大,因此不是一個好方法
+```c
+void init() {
+    flag = 0;
+}
+
+void lock() {
+  while(TestAndSet(&flag,1) == 1)
+    yield(); //give up the CPU
+}
+
+void unlock() {
+  flag = 0;
+}
+```
+
+### Using Queue: Sleep Instead Of Spin
+- 先前的方法總會遇到一個問題,spin util to get the lock,或是yield the CPU immediately,都會造成CPU waste且no prevention of starvation
+
+- 使用support provided by Solaris 
+  1. park: put a calling thread to sleep
+  2. unpark(threadID): wake a particular thread by threadID
+```c
+typedef struct __lock_t {
+  int flag;
+  int guard;
+  queue_t *q;
+}lock_t;
+
+
+void lock_init(lock_t *m){
+  m->flag = 0;
+  m->guard = 0;
+  queue_init(m->q);
+}
+
+void lock(lock_t *m) {
+  while(TestAndSet(&m->guard,1) == 1); // acquire guard lock by spining
+  if(m->flag == 0){
+    m->flag = 1; // lock is acquired
+    m->guard = 0;
+  }else{
+    queue_add(m->q,gettid());
+    m->guard = 0;
+    park();
+  }
+}
+
+void unlock(lock_t *m) {
+  while(TestAndSet(&m->guard,1) == 1); // acquire guard lock by spining
+  if(queue_empty(m->q))
+    m->flag = 0; // let go of lock; no one wants it
+  else
+    unpark(queue_remove(m->q)); // hold lock for next thread !
+  m->guard = 0;
+}
+```
+
+### 我們藉由以上程式碼完成兩件事情
+1. 使用TestAndSet實現高性能的lock
+2. 使用queue來control獲得鎖的邏輯,避免starvation
+
+- guard 基本上起到了spin的作用,但因為圍繞著flag和queue因此沒辦法完全avoid spin,但這個spin的time是有限的,因此不會造成不斷spin的狀況
+
+- 在lock函數中,如果flag != 0也代表無法獲取鎖,會將她加入queue中等待,並且將guard設為0來釋放CPU,需要注意的是如果我們在park後才將guard設為0
+  - 如果先設為park再將guard設為0
+    1. 由於先park後scheduler將它設為睡眠,此時訪問他的guard值時會讓其他scheduler誤以為他尚未sleep而導致錯誤
+
+    2. 如果此時另一個thread嘗試unpark時,由於他的guard尚未清0,因此scheduler選擇不wake這一個thread
+
+- 在wake up另一個thread時並沒有將flag重新設為0是必須的,thread被wake後是從park的調用返回,此時沒有guard因此也不能將flag設為1,因此我們直接將lock release的thread傳遞給下一個gets lock的thread即可
+
+- 在目前的solutioin中存在race condition,在park調用之前如果有另一個thread也要park,assuming 這個thrad應該要sleep until gets lock,此時switch到了another thread,which thread have lock,這時該thread釋放鎖會導致第一個park的thread永遠沈睡,這種問題也稱為wakeup/waiting race
+
+### Setpark
+- Solaris 使用了setpark來解決這問題,當一個thread表明自己馬上要park時,如果剛好另一個thread被調度,並且調用了unpark,後續的park掉用就會直接返回,而不是一直sleep
+
+```c
+queue_add(m->q,gettid());
+setpark();
+m->guard = 0;
+```
+
+# Lock-based Concurrent Data Structures
+
+## Simple But Not Scalabe
+
+```c
+typedef structur __counter_t {
+  int value;
+}counter_t;
+
+void init(counter_t *c) {
+  c->value = 0;
+}
+
+void inc(counter_t *c) {
+  c->value ++;
+}
+
+void dec(counter_t *c) {
+  c->vlaue --;
+}
+
+int get(counter_t *c) {
+  return c->value;
+}
+```
+
+## Problem: How to let this code be thread safe
+```c
+typedef struct __counter_t {
+  int value;
+  pthread_mutex_t lock;
+} counter_t;
+
+void init(counter_t *c) {
+  c->value = 0;
+  pthread_mutex_init(&c->lock, NULL);
+}
+
+void inc(counter_t *c) {
+  pthread_mutex_lock(&c->lock);
+  c->value ++;
+  pthread_mutex_unlock(&c->lock);
+} 
+
+void dec(counter_t *c) {
+  pthread_mutex_lock(&c->lock);
+  c->value --;
+  pthread_mutex_unlock(&c->lock);
+}
+
+int get(counter_t *c) {
+  pthread_mutex_lock(&c->lock);
+  int rc = c->value;
+  pthread_mutex_unlock(&c->lock);
+  return rc;
+}
+```
+
+- 現在有了一個thread safe的data structur,但當thread增加時性能會大幅度下降,理想情況下在mutil process上運行會像single process一樣快
+
+## Sloppy counter
+- 簡單的思想就是每個thread都有自己的mutex來避免race condition發生,而全局上的counter會定期從這些局部counter(含有mutex的thread)上加上自己本身的來達到記數的效果
+
+```c
+typedef struct __counter_t {
+  int global; // global counter
+  pthread_mutex_t glock; // global lock
+  int local[NUMCPUS]; // local count (per cpu)
+  pthread_mutex_t llock[NUMCPUS]; 
+  int threshold; // update frequency
+} counter_t;
+
+// init: record threshold, init locks, init values of all local counter and global counter
+
+void init(counter_t *c,int threshold) {
+  c->threshold = threshold;
+  c->global = 0;
+  pthread_mutex_init(&c->glock, NULL);
+  int i;
+  for(i=0;i<NUMCPUS;i++){
+    c->local[i] = 0;
+    pthread_mutex_init(&c->llock[i], NULL);
+  }
+}
+
+// update: usually, just grab local lock and update local amount,一但到了threshold才grab global lock and thransfer local values to global amount
+
+void update(counter_t *c, int threadID, int amount) {
+  int cpu = threadID % NUMCPUS;
+  pthread_mutex_lock(&c->llock[cpu]);
+  c->local[cpu] += amount;
+  if(c->local[cpu] >= c->threshold)  {
+    // transfer to global
+    pthread_mutex_lock(&c->glock);
+    c->global += c->local[cpu];
+    pthread_mutex_unlock(&c->glock);
+    c->local[cpu] = 0;
+  }
+  pthread_mutex_unlock(&c->llock[cpu]);
+}
+
+// get: just return the global amount
+int get(counter_t *c) {
+  pthread_mutex_lock(&c->lock);
+  int val = c->global;
+  pthread_mutex_unlock(&c->lock);
+  return val;
+}
+```
