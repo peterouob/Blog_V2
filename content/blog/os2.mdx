@@ -2,6 +2,7 @@
 title: Process API
 description: operating systems three easy pieces筆記
 date: 2025-01-12
+tag: ["ostep"]
 ---
 
 # Introduce
@@ -17,7 +18,7 @@ date: 2025-01-12
 - the fork system call is used to create a new process
   ```c
   #include "os.h"
-  
+
   int main(int argc,char *argv[]){
       printf("hello world (pid:%d)\n", (int) getpid());
       int rc = fork();
@@ -30,7 +31,7 @@ date: 2025-01-12
           printf("hello, I am parent of %d (pid:%d)\n", rc, (int) getpid());
       }
       return 0;
-  } 
+  }
   ```
 - the process is created is an **exact copy of the calling process**
 - the new process which parent creates we called it child process, and it does not run at the main function, and the child process is not an exact copy
@@ -42,7 +43,7 @@ date: 2025-01-12
 - if the parent does happen to run first,it will immediately call wait; thus system call will not return until the child has run and exited
   ```c
   #include "os.h"
-  
+
   int main(){
       printf("hello world (pid:%d)\n", (int) getpid());
       int rc = fork();
@@ -92,7 +93,7 @@ date: 2025-01-12
 - This example lets the output of the program wc is redirected into the output file
   ```c
   #include "os.h"
-  
+
   int main(int argc,char **argv){
       int rc = fork();
       if(rc < 0){
@@ -101,7 +102,7 @@ date: 2025-01-12
       }else if (rc == 0){
           close(STDOUT_FILENO);
           open("./p4.output",O_CREAT|O_WRONLY|O_TRUNC,S_IRWXU);
-          
+
           //exec wc
           char *myargs[3];
           myargs[0] = strdup("wc");
@@ -111,7 +112,7 @@ date: 2025-01-12
       }else{
           int rc_wait = wait(NULL);
       }
-  
+
       return 0;
   }
   ```
@@ -119,7 +120,7 @@ date: 2025-01-12
 - Beyond fork,exec,and wait,there are a lot of other interfaces for interacting with a process in a Unix system
 - In most Unix shells, certain keystroke combinations are configured to deliver a specific signal to the currently running process
 
-## What is root 
+## What is root
 - users generally can only control their iwn processes but root can control all process
 - for example, while most users cannot kill other users process, the superuser can.
 
@@ -189,7 +190,7 @@ int main(){
         fprintf(stdout, "Parent: x = %d\n", x);
         wait(NULL);
     }
-}   
+}
 ```
 ## 2.
 - Write a program that opens a file `(with the open() system call)` and then
@@ -242,7 +243,7 @@ int main(){
         printf("goodbye\n");
         exit(1);
     }
-    
+
 }
 ```
 ## 4.

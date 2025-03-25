@@ -2,6 +2,7 @@
 title: The Process
 description: operating systems three easy pieces筆記
 date: 2025-01-10
+tag: ["ostep"]
 ---
 # Introduce
 
@@ -15,17 +16,17 @@ date: 2025-01-10
 - time-sharing 是一種運用在os中的基本技術,最主要的作用就是共享資源,而且這種time-sharing mechanism is employed by all modern OS
 
 # Abstraction A Process
-- To understand what constitutes a process,we need to understand the machine state first which mean a program can read or write when it is running 
+- To understand what constitutes a process,we need to understand the machine state first which mean a program can read or write when it is running
 - memory that the process can address `(call its address space)` is part of the process and another are registers for machine state
 
 ## Register for machine state
 - program counter or PC `sometimes called the instruction pointer or IP)` tells us which instruction of the program is currently being executed.
 - stack pointer and frame are used to manage the stack for function parameters, local variables,and return address.
 
-## Separate police and mechanism 
+## Separate police and mechanism
 - 對於OS來說最常見的就是Low-Level and High-Level mechanisms`(機制)`.可以想像成 mechanism as providing the answer to HOW question about a system, For exampel
   - how does an operating system perform a context switch? the policy provides the answer to a which question
-  - which process should the operating system run right now? 
+  - which process should the operating system run right now?
 - Separating the two allows one easily to change polices without having to rethink the mechanism and is thus a form of modularity`(模組化)` which a general software design principle
 
 # Process API
@@ -37,7 +38,7 @@ date: 2025-01-10
 
 # ProcessCreation A Little More Detail
 - early operating system loading process is done eagerly,i.e.,all at once before running the program
-- modern Os perform the process **lazy**,i.e.,loading pieces of code or data only as they are needed during program execution 
+- modern Os perform the process **lazy**,i.e.,loading pieces of code or data only as they are needed during program execution
   - OS allocates this memory which from the stack gives ot to the process
     - C programs use the stack for local variables,function parameters,and return address
   - OS also allocates the memory for the program heap
@@ -91,7 +92,7 @@ date: 2025-01-10
     char name[16];               // Process name (debugging)
   };
   ```
-## Process list 
+## Process list
 - The process list `also called task list` is the first such structure. It is one of the simpler ones, but certainly
   any OS that has the ability to run multiple programs at once will have
   something in order to keep track of all the running programs in the system

@@ -2,11 +2,12 @@
 title: CPU Scheduling
 description: operating systems three easy pieces筆記
 date: 2025-01-18
+tag: ["ostep"]
 ---
 
 # Introduce
 
-- we will now do just that, presenting a series of **scheduling policies** sometimes called **disciplines** 
+- we will now do just that, presenting a series of **scheduling policies** sometimes called **disciplines**
 
 # Workload Assumptions
 - the process running in the system called **workload**
@@ -32,7 +33,7 @@ date: 2025-01-18
 - First In, First Out scheduling or sometimes called First Come, First Served (FCFS)
 - Now we have an example
   ![](../../public/fifo1.png)
-  - the average turnaround time for the three job is simply 
+  - the average turnaround time for the three job is simply
     - `10+20+30/3 = 20`
 - but..., how about when the three jobs have different length of time
 - For example;
@@ -64,7 +65,7 @@ date: 2025-01-18
 
 ## A new Metric: Response Time
 - STCF would be great policy. In fact, for a number of early batch computing system, these types of scheduling algorithm made some sense
-- However, the **time-shared** machines changed all that, and new metric was born: **response time** 
+- However, the **time-shared** machines changed all that, and new metric was born: **response time**
   ![](../../public/rt.png)
 # Round Robin (RR)
 - To solve this problem, a new scheduling algorithm, classically referred to as **Round-Robin(RR)**

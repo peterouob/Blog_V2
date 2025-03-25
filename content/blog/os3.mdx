@@ -2,6 +2,7 @@
 title: Limited Direct Execution
 description: operating systems three easy pieces筆記
 date: 2025-01-15
+tag: ["ostep"]
 ---
 
 # Introduce
@@ -19,17 +20,17 @@ date: 2025-01-15
 # Limited Direct Execution
 
 ## Basic direct execution protocol
-| OS                            | Program                  | 
+| OS                            | Program                  |
 |-------------------------------|--------------------------|
-| Create entry for process list |                          |  
-| Allocate memory for program   |                          |   
-| Load program into memory      |                          |   
-| Set up stack with argc/argv   |                          |  
-| Clear registers               |                          |  
-| Execute call main()           |                          |  
-|                               | Run main()               |   
-|                               | Execute return from main |  
-| Free memory of process        |                          |   
+| Create entry for process list |                          |
+| Allocate memory for program   |                          |
+| Load program into memory      |                          |
+| Set up stack with argc/argv   |                          |
+| Clear registers               |                          |
+| Execute call main()           |                          |
+|                               | Run main()               |
+|                               | Execute return from main |
+| Free memory of process        |                          |
 | Remove from process list      |                          |
 
 ### few problems in our quest to virtualize the CPU
@@ -51,7 +52,7 @@ date: 2025-01-15
   - for example, we are running in user mode; a process cannot issue IO requests; if we did, the os will kill the process
 
 ### Introduce
-- user mode is kernel mode, which the operating system or kernel runs in. 
+- user mode is kernel mode, which the operating system or kernel runs in.
   - In this mode, code that runs can do what it likes
 
 ## However, what should a user process dfo when it wishes to perform time kind of privileged operation?
@@ -74,7 +75,7 @@ date: 2025-01-15
 - One of the first things is
   - tell the hardware what code to run when certain exceptional events occur. Once the hardware is informed, it remembers the location of these handlers until the machine is next rebooted
 - to specify the exact system call, a **system-call number** is usually assigned to each system call. it is valid the number when handling the system call inside the trap handler, and if it is, executes the corresponding code.
-- This level of indirection serves as a from of protection; user code cannot specify an exact address to jump to 
+- This level of indirection serves as a from of protection; user code cannot specify an exact address to jump to
 - Trap table is a very powerful capability, it is also a privileged operation.
 
 ### What horrible things could you do to a system if you could install your own trap table? Could you take over the machine?
@@ -114,7 +115,7 @@ date: 2025-01-15
 - Systems like this often include an explicit **yield** system call,which does nothing except to transfer control
   to the OS so it can run other processes
 - Application also transfers control to OS when they do something illegal`非法的`,
-  - if an application divides by zero 
+  - if an application divides by zero
   - tries to access memory that it should not be able to access
 - it will generate a trap to the OS.The OS will then have control of the CPU again
 
@@ -126,7 +127,7 @@ date: 2025-01-15
 
 ### How to gain control without cooperation
 - How can the OS gain control of the CPU even if processes are not being
-  cooperative? 
+  cooperative?
 - What can the OS do to ensure a rogue process does not take
   over the machine?
 
@@ -138,7 +139,7 @@ date: 2025-01-15
   - Second: Also during the boot sequence, the OS must start the timer, which is of course a privileged operation
 - Once the timer has begun, the OS can thus feel safe in that control will eventually be returned to it, and thus the OS is free to run user programs.
 - The timer can also be turned off
-- 
+-
 ### Use the timer interrupt to regain control
 - the addition of a timer interrupt gives the OS the ability to run again on a CPU
 
@@ -157,9 +158,9 @@ date: 2025-01-15
 - By switching stacks, the kernel enters the call to the switch code in the context of one process and returns in the context of another
 - When the OS finally executes a **return-form-trap** instruction, the soon-to-be-executing process becomes the currently running process.
 
-### Switch 
+### Switch
 - In the timer interrupt handler, the OS decides to switch from running Process A to Process B. it calls **switch**
-  - save current register values, into the process structure of A 
+  - save current register values, into the process structure of A
   - restores the registers of Process B, from its process structure entry
   - switches contexts, specifically by changing the stack pointer to use **B's** kernel stack and not **A's**
 
@@ -167,7 +168,7 @@ date: 2025-01-15
 # Context switch
 #
 #   void swtch(struct context **old, struct context *new);
-# 
+#
 # Save the current registers on the stack, creating
 # a struct context, and save its address in *old.
 # Switch stacks to new and pop previously-saved registers.
@@ -241,7 +242,7 @@ wish to switch from running the current process to a different one,
 a low-level technique known as a context switch.
 thus readied, you can let your baby roam freely, secure in t
 
-# Homework 
+# Homework
 - Measurement the system calls and the context
   ```c
   #define _GNU_SOURCE
@@ -249,24 +250,24 @@ thus readied, you can let your baby roam freely, secure in t
   #include <stdlib.h>
   #include <unistd.h>
   #include <string.h>
-  
+
   #include <fcntl.h>
   #include <sched.h>
-  
+
   #include <sys/time.h>
   #include <sys/wait.h>
-  
+
   #define M 1000000
   const int SIZE = 5;
-  
+
   int main(){
-    
+
     struct timeval start,end;
     char *arg[3];
     arg[0] = strdup("wc");
     arg[1] = strdup("1.c");
     arg[2] = NULL;
-  
+
     printf("start system call caclute");
     gettimeofday(&start,NULL);
     for(int i=0;i<100;i++){
@@ -276,9 +277,9 @@ thus readied, you can let your baby roam freely, secure in t
     printf("sysyem call:%f microseconds\n\n",
             (float)(end.tv_sec*M+end.tv_usec-
                 start.tv_sec*M+start.tv_usec)/100);
-   
-  
-  
+
+
+
     struct timeval start_,end_;
     char buf[SIZE];
     cpu_set_t set;
@@ -288,14 +289,14 @@ thus readied, you can let your baby roam freely, secure in t
       fprintf(stderr,"sched_setaffinity\n");
       exit(1);
     }
-    
+
     int p1[2],p2[2];
     if(pipe(p1)<0||pipe(p2)<0){
       fprintf(stderr,"pipe failed\n");
       exit(1);
     }
-  
-    
+
+
     int rc = fork();
     if(rc < 0){
       fprintf(stderr,"process failed\n");
@@ -303,17 +304,17 @@ thus readied, you can let your baby roam freely, secure in t
     }else if(rc == 1){
       close(p1[1]);
       close(p2[0]);
-      
+
       write(p2[1],"hello",SIZE);
       read(p1[0],buf,SIZE);
-         
+
       close(p1[0]);
       close(p2[1]);
     }else{
         // parent process execute first
         // pipe one write first and pipe two read first
           printf("start context call caclute");
-    
+
       gettimeofday(&start_,NULL);
       close(p1[0]);
       close(p2[1]);
@@ -321,13 +322,13 @@ thus readied, you can let your baby roam freely, secure in t
       read(p2[0],buf,SIZE);
       close(p1[1]);
       close(p2[0]);
-  
+
       gettimeofday(&end_,NULL);
       printf("context call:%f microseconds\n\n",
             (float)(end_.tv_sec*M+end_.tv_usec-
                 start_.tv_sec*M+start_.tv_usec));
       }
-  
+
      wait(NULL);
-  } 
+  }
   ```

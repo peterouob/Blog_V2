@@ -1,8 +1,8 @@
 ---
 title: ostep concurrency
-description: ostep筆記
+description: ostep concurrency筆記
 date: 2025-03-13
-tags: ["os"]
+tags: ["ostep"]
 ---
 
 # Introduce
@@ -65,7 +65,7 @@ void init(lock_t *mutex) {
   mutex->flag = 0;
 }
 
-void lock(lock_t *mutex) {  
+void lock(lock_t *mutex) {
   while (mutex->flag == 1) // TEST the flag;
     // spin-wait (do nothing)
   mutex->flag = 1; // now SET it!
@@ -98,7 +98,7 @@ void init(lock_t *lock) {
 }
 
  void lock(lock_t *lock) {
-  while (TestAndSet(&lock->flag, 1) == 1); 
+  while (TestAndSet(&lock->flag, 1) == 1);
     // spin-wait (do nothing)
  }
 
@@ -133,7 +133,7 @@ void init(lock_t *lock) {
   return *ptr;
  }
  int StoreConditional(int *ptr, int value) {
- 
+
  if (no update to *ptr since LL to this addr) {
   *ptr = value;
   return 1; // success!
@@ -209,7 +209,7 @@ void unlock() {
 ### Using Queue: Sleep Instead Of Spin
 - 先前的方法總會遇到一個問題,spin util to get the lock,或是yield the CPU immediately,都會造成CPU waste且no prevention of starvation
 
-- 使用support provided by Solaris 
+- 使用support provided by Solaris
   1. park: put a calling thread to sleep
   2. unpark(threadID): wake a particular thread by threadID
 ```c
@@ -315,7 +315,7 @@ void inc(counter_t *c) {
   pthread_mutex_lock(&c->lock);
   c->value ++;
   pthread_mutex_unlock(&c->lock);
-} 
+}
 
 void dec(counter_t *c) {
   pthread_mutex_lock(&c->lock);
@@ -341,7 +341,7 @@ typedef struct __counter_t {
   int global; // global counter
   pthread_mutex_t glock; // global lock
   int local[NUMCPUS]; // local count (per cpu)
-  pthread_mutex_t llock[NUMCPUS]; 
+  pthread_mutex_t llock[NUMCPUS];
   int threshold; // update frequency
 } counter_t;
 

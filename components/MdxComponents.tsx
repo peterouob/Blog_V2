@@ -1,9 +1,12 @@
 import * as runtime from "react/jsx-runtime"
 import Image from "next/image";
 import { Callout } from "./callout";
-import React from "react";
-import {MermaidDiagram} from "@/components/Mermaid";
+import dynamic from "next/dynamic";
 
+import React from "react";
+const MermaidDiagram = dynamic(() => import("./Mermaid"), {
+  ssr: false,
+});
 const useMDXComponent = (code: string) => {
     const fn = new Function(code)
     return fn({ ...runtime }).default

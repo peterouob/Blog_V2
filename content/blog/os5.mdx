@@ -2,6 +2,7 @@
 title: Multilevel Feedback Queue Scheduling
 description: operating systems three easy pieces筆記
 date: 2025-01-19
+tag: ["ostep"]
 ---
 
 # Introduce
@@ -40,7 +41,7 @@ date: 2025-01-19
 
 ### Example 2. Along Came A Short Job
 ![](../../public/mlex2.png)
-- Job A (shown in black) is running along in the lowest-priority queue 
+- Job A (shown in black) is running along in the lowest-priority queue
   - as would any long-running CPU-intensive jobs
 - Job B (shown in gray) arrives at time T = 100
   - thus is inserted into the highest queue,because it's arrive time is bigger than Job A
@@ -56,11 +57,11 @@ date: 2025-01-19
 - for example, is doing a lot of IO such as waiting for user input from keyboard or mouse
   - it will relinquish`放棄` CPU before its allotment is complete, we don’t wish to penalize`懲罰` the job and thus simply keep it at the same level
 ![](../../public/mlex3.png)
-  - Job B (shown in gray) that needs the CPU only for 1 ms before performing an I/O competing 
+  - Job B (shown in gray) that needs the CPU only for 1 ms before performing an I/O competing
   - Job A (shown in black) with a long-running batch job for the CPU
     - The MLFQ approach keeps B at the highest priority because B keeps releasing`or say it relinquish` the CPU
     -  If B is an interactive job, MLFQ further`進一步` achieves its goal of running interactive jobs quickly
-  
+
 # Problems With Our Current MLFQ
 - First, the problem of starvation`飢餓` if there are **too many** jobs in the system
   - they will combine to consume **all** CPU time, and thus long-running job will **never** receive any CPU time(they starve)
@@ -68,10 +69,10 @@ date: 2025-01-19
   - because our cpu before the allotment is used, issue an IO operation will and thus relinquish the CPU
     - 具體來說, 當程序接近分配上限才釋放, 既不會觸發decrease priority rule(4a),又可以保證high priority, the job could nearly`幾乎` monopolize`壟斷` the CPU
 - Finally, a program may change its behavior overtime
-  - what was CPU-bound transition to a phase`階段` of interactivity`互動性`, 但按照現在的rule, 沒辦法像其他互動性program被對待 
+  - what was CPU-bound transition to a phase`階段` of interactivity`互動性`, 但按照現在的rule, 沒辦法像其他互動性program被對待
 
 # The Priority Boost
-- if we can avoid the problem of starvation. What could we do in order to guarantee`保證` that CPU-bounds jobs will make some progress`進展`  
+- if we can avoid the problem of starvation. What could we do in order to guarantee`保證` that CPU-bounds jobs will make some progress`進展`
   - periodically`定期` boost the priority of all the jobs in the system
 ![](../../public/mlfq4.png)
 - This new rule solves two problems
@@ -97,7 +98,7 @@ date: 2025-01-19
     - without any protection from gaming, a process can issue an IO before its allotment ends, thus staying at the same priority level, and dominating CPU time.
     ![](../../public/mlex5.png)
   - workload with better accounting in place
-    - regardless of the IO behavior of the process, it slowly moves down the queues, and thus cannot gain an unfair share of the CPU. 
+    - regardless of the IO behavior of the process, it slowly moves down the queues, and thus cannot gain an unfair share of the CPU.
     ![](../../public/mlex6.png)
 # Tuning MLFQ And Other Issues
 - One big question is how to parameterize such a scheduler

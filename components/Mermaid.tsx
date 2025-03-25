@@ -7,7 +7,7 @@ interface MermaidProps {
     chart: string;
 }
 
-export function MermaidDiagram({ chart }: MermaidProps) {
+const  MermaidDiagram = ({ chart }: MermaidProps) => {
     useEffect(() => {
         mermaid.initialize({ startOnLoad: true });
         mermaid.contentLoaded();
@@ -20,3 +20,4 @@ export function MermaidDiagram({ chart }: MermaidProps) {
     );
 }
 
+export default  MermaidDiagram;
