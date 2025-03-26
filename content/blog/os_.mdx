@@ -1,0 +1,72 @@
+---
+title: OS 筆記
+description: operating systems three easy pieces筆記
+date: 2025-02-20
+tags: ["note"]
+---
+
+
+# IO運作模式和Hw resources protection
+
+## Introduce
+- IO 運作方式
+  1. polling
+  2. interrupted
+  3. DMA
+- Interrupt 機制處理程序與種種類
+- Hardware resources protection
+  - 基礎建設
+    - Dual Mode 運作
+    - Privileged instruction 特權指令
+  - protection
+    - IO protection
+    - Memory protection
+    - Cpu protection
+
+## IO 運作模式
+
+### Pooling IO (訊問是IO)
+1. Def: 又稱 **Busy-waiting IO** or **Programmed IO**
+2. Step
+  1. 執行中的process對Os發出IO request (e.g. Disk read)
+  2. 執行中的process會被Block, wait uintil IO complete(不一定)
+  3. OS取得CPU執行相關的System calls,已完成IO services
+  4. CPU設定IO command給 device controller
+  5. device controller 控制 IO device 進行real IO operation
+  6. CPU 可以切給其他process使用
+    - 然而CPU在執行其他process過程中耗費大量CPU time用於polling IO device controller 資訊,已確認剛交付的IO運作完成與否
+- 並為全部用在process execution 上因此CPU utilzation低且process throughput 不高
+
+### Interrupted IO (中斷式IO)
+1. Step 如1~5如同polling IO
+  6. CPU 切給另一個Process執行且IO Device也正在執行IO運作
+  7. 當IO運作完成,IO Device controller 會發出 IO complete Interrupt 通知OS
+  8. OS 收到interrupt 後會先暫停目前process執行並保存期狀態
+  9. OS 會查詢interrupt vector判定何種中斷發生,並找出對應的Interrupt Service Routine(ISR 或 interrupt handler ) 位址
+  10. Jump to ISR 
+  11. 等待ISR完成後return contril to kernel, kernel notify wait process 其IO 完成
+  12. OS恢復中斷之前得prcess執行,或交由CPU scheduler決定下一個執行的process
+2. 優點
+- CPU 無需耗費大量的time在polling IO Device controller上,而是更專注用在process execution 上
+- CPU utilzation較高,產能throughput提升,imporve the system performance
+3. 缺點
+-  Interrupt 處理也需耗費cpu time,,所以IO運作時間不長時polling IO也許更有利
+- 如果interrupt發生頻率極大的頻繁,則CPU utilzation 會很低,因此performance很差
+- CPU time人須用於Data 在IO Device 與 Memory上的傳輸,過程監督
+  - CPU time 此時位在process execution上
+
+### DMA (Direct Memory Access)
+1. Def: DMA controller 負責IO Device 與memory 之間的資料傳輸,過程不用CPU 參與監督
+
+2. 優點
+- CPU 有更多時間在process execution上, cpu utilzation相對更高,此外適用於高速Block-Transfer oriented之IO Device
+- 中斷發生頻率相對較低
+
+3. 缺點
+- DMA controller 設計會讓硬體設計更複雜,需要增加額外Bus
+- DMA 必須用到memory 和 bus而這會和cpu 產生衝突,資源的爭奪
+
+4. DMA controller 一班採用interleaving(交錯)or cycle stealing 技術,與CPU輪番使用memory
+
+
+
