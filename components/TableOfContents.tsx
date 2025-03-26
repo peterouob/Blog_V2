@@ -5,14 +5,14 @@ import { Menu, X } from "lucide-react";
 
 export function TableOfContents() {
     const [headings, setHeadings] = useState<{ id: string; text: string; level: number }[]>([]);
-    const [isOpen, setIsOpen] = useState(false); // 控制目錄顯示狀態
+    const [isOpen, setIsOpen] = useState(false);  
     const tocRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        const hTags = Array.from(document.querySelectorAll("h1, h2")).map((el) => ({
+        const hTags = Array.from(document.querySelectorAll("h1")).map((el) => ({
             id: el.id,
             text: el.textContent || "",
-            level: el.tagName === "H1" ? 1 : 2,
+            level: 1,
         }));
 
         setHeadings(hTags);
@@ -46,7 +46,6 @@ export function TableOfContents() {
                 {isOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
 
-            {/* 目錄內容 */}
             <aside
                 ref={tocRef}
                 className={`fixed top-16 right-4 w-80 bg-white dark:bg-gray-900 p-5 shadow-2xl border rounded-lg 
@@ -54,8 +53,7 @@ export function TableOfContents() {
                     ${isOpen ? "opacity-100 scale-100" : "opacity-0 scale-95 pointer-events-none"}
                     z-50`}
             >
-                <h2 className="text-xl font-bold mb-3 text-gray-900 dark:text-gray-100">📑 目錄</h2>
-                <ul className="space-y-3">
+               <ul className="space-y-3">
                     {headings.map(({ id, text, level }) => (
                         <li
                             key={id}

@@ -34,11 +34,11 @@ tag: ["ostep"]
 - Now we have an example
   ![](../../public/fifo1.png)
   - the average turnaround time for the three job is simply
-    - `10+20+30/3 = 20`
+    - $10+20+30/3 = 20$
 - but..., how about when the three jobs have different length of time
 - For example;
   ![](../../public/fifo2.png)
-  - the average turnaround is `100+110+120/3 = 110`, but it is more than B job or C job
+  - the average turnaround is $100+110+120/3 = 110$, but it is more than B job or C job
 - this problem is generally referred to as the **convoy effect**
   - where number of relatively short consumers of a resource get queued behind a **heavyweight** resource consumer
 - So what should do can solve the problem which is run for different amounts of time of jobs
@@ -47,11 +47,11 @@ tag: ["ostep"]
 - this new scheduling discipline is known as **Shortest Job First (SJF)**, and the name should be easy to understand this algorithm
 - because the relatively short consumers been stuck by heavyweight consumers, so we execute B, C and A
   ![](../../public/sjf1.png)
-  - the average turnaround time will be `10+20+120/3 = 50`
+  - the average turnaround time will be $10+20+120/3 = 50$
 - In fact, given our assumptions about jobs all ariving at the same time, we could prove **SJF** is indeed on **optimal** scheduling algorithm
-- Now we assumptions A arrive at `T=0` but B and C arrive at `T=10`
+- Now we assumptions A arrive at $T=0$ but B and C arrive at $T=10$
   ![](../../public/sjf2.png)
-  - now the average arround is `100+(110-10)+(120-10)/3 = 103.3`
+  - now the average arround is $100+(110-10)+(120-10)/3 = 103.3$
   - because B and C arrived shortly after A, they still are forced to wait until A has completed
 
 # Shortest Time-to-Completion First (STCF)
@@ -61,7 +61,7 @@ tag: ["ostep"]
 - The STCF determines which of the remaining jobs `(including the new job)` has the least time left, and schedules that one
   - For example, STCF would preempt A and run B and C to completion, only when they are finished would A's remaining time be scheduled.
   ![](../../public/stcf.png)
-  - the average turnaround time will be `(120-0)+(20-10)+(30-10)/3`
+  - the average turnaround time will be $(120-0)+(20-10)+(30-10)/3$
 
 ## A new Metric: Response Time
 - STCF would be great policy. In fact, for a number of early batch computing system, these types of scheduling algorithm made some sense
@@ -72,8 +72,8 @@ tag: ["ostep"]
   - the basic idea is simple: instead of running jobs to completion, RR runs a job for a **time slice** (sometimes called a **scheduling quantum**) and then switches to the next job in the run queue
   - 如此一來就有效化的優化response time, 但如果time slice太長, 則 RR 和 SJF 沒什麼兩樣, 但如果time slice太短, context switch的時間會造成巨大影響
   ![](../../public/rr.png)
-    - time response for SFJ is `0+5+10/3 = 5`
-    - time response for RR is `0+1+2/3 = 1`
+    - time response for SFJ is $0+5+10/3 = 5$
+    - time response for RR is $0+1+2/3 = 1$
 - RR, with a reasonable time slice, is thus an excellent scheduler if response time is our only metric
   - But RR is indeed one of the **worst** policies if turnaround time is our metric
 - Because turnaround time only. cares about when jobs **finish**, RR is nearly pessimal`最差的`,even worse than simple FIFO in many case
