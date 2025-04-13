@@ -1,0 +1,75 @@
+---
+title: rust小技巧 
+description: 記錄一些覺得在rust中很有趣的寫法 
+tags: ["code", "rust"]
+---
+
+## 情景:返回不同type
+- 不想使用dyn來改變return value的type,使用enum來進行不同值轉換
+- 這邊的情況會是希望根據使用者輸入資料返回不同加密algorithm的結果
+  - 但我不想要為每一個都編寫不同函數,太攏長而且沒必要
+```rust
+type HmacSha256 = Hmac<Sha256>;
+type HmacSha512 = Hmac<Sha512>;
+
+enum HmacType {
+    Sha256(HmacSha256),
+    Sha512(HmacSha512)
+}
+
+
+fn convert_hmac(key: String,message: String,num: i8) -> HmacType {
+    match num {
+        2 => {
+            let mut mac: HmacSha512 = HmacSha512::new_from_slice(key.as_bytes())
+                .expect("failed to convert to sha512 hmac");
+            mac.update(message.as_bytes());
+            HmacType::Sha512(mac)
+        }
+        _ => {
+            let mut mac: HmacSha256 = HmacSha256::new_from_slice(key.as_bytes())
+                .expect("failed to convert to sha256 hmac");
+            mac.update(message.as_bytes());
+            HmacType::Sha256(mac)
+        }
+    }
+}
+
+```
+
+
+### 這時候會發現原先mac的底下的method已經沒辦法使用
+- 編寫trait來滿足需求
+- 由於使用enum並不會直接滿足mac底下的method,因此需要調用clone完成
+  - 不滿足的原因是因為這是enum借用出來的mutable reference,Rust不允許把他移出enum,也就是改變值
+```rust
+
+trait VerifyHmac {
+    fn verify_slice(&mut self,tag: &[u8]) -> Result<(), MacError>;
+}
+
+impl VerifyHmac for HmacType {
+    fn verify_slice(&mut self, tag: &[u8]) -> Result<(), MacError> {
+       match self {
+           HmacType::Sha256(hmac) => hmac.clone().verify_slice(tag),
+           HmacType::Sha512(hmac) => hmac.clone().verify_slice(tag),
+       }
+    }
+}
+
+```
+
+### 至此就可以輕鬆地調用了
+```rust
+pub fn verify(key: String, message: String,code: String,num: i8){
+
+    let mut mac = convert_hmac(key, message, num);
+
+    let code_bytes =hex::decode (code).expect("cannot convert string to hex");
+    
+   match mac.verify_slice(&code_bytes) {
+       Ok(()) => println!("Hmac驗證成功!訊息完整且金鑰正確"),
+       Err(..) => println!("Hmac驗證失敗!可能訊息被篡改或金鑰不正確"),
+   }
+}
+```
