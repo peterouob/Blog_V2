@@ -1,6 +1,5 @@
 ---
-title: ostep concurrency
-description: ostep concurrency筆記
+title: ostep concurrency description: ostep concurrency筆記
 date: 2025-03-13
 tags: ["ostep"]
 ---
@@ -480,3 +479,131 @@ int List_Lookup(list_t *l,int key) {
   - 每個node都有一個鎖以此替代整個LinkList只有一個鎖,在iterator的時後先搶佔下一個node上的鎖再釋放自己的
 - 問題:
   - 概念上增加了LinkList操作的併發程度,但因為在iterator時不斷地獲取和釋放會造成大量開銷,因此不一定會比單鎖還要快
+
+## queue
+```c
+#include <pthread.h>
+#include <assert.h>
+
+typedef struct __node_t {
+  int value;
+  struct __node_t *next;
+} node_t;
+
+typedef struct __queue_t {
+  node_t *head;
+  node_t *tail;
+  pthread_mutex_t head_lock, tail_lock;
+} queue_t;
+
+void Queue_Init(queue_t *q) {
+  node_t *tmp = malloc(sizeof(node_t));
+  tmp->next = NULL;
+  q->head = q->tail = tmp;
+  pthread_mutex_init(&q->head_lock, NULL);
+  pthread_mutex_init(&q->tail_lock, NULL);
+}
+
+void Queue_Enqueue(queue_t *q,int value) {
+  node_t *tmp = mallco(sizeof(node_t));
+  assert(tmp != NULL);
+  tmp->value = value;
+  tmp->next = NULL;
+
+  pthread_mutex_lock(&q->tail_lock);
+  q->tail->next = tmp;
+  q->tail = tmp;
+  pthread_mutex_unlock(&q->tail_lock);
+}
+
+int Queue_Dequeue(queue_t *q,int *value) {
+  pthread_mutex_lock(&q->head_lock);
+  node_t *tmp = q->head;
+  node_t *new_head = tmp->next;
+  if (new_head == NULL) {
+    pthread_mutex_unlock(&q->head_lock);
+    return -1;
+  }
+  *value = new_head->value;
+  q->head = new_head;
+  pthread_mutex_unlock(&q->head_lock);
+  free(tmp);
+  return 0;
+}
+```
+
+# Condition Variables
+- 有時候我們需要檢查某condition滿足後程式再繼續運行
+
+## 基於 spinLock
+```c
+volatile int done = 0;
+
+void *child(void *arg){
+  printf("child\n");
+  done = 1;
+  return NULL;
+}
+
+int main(int argc,cahr **argv){
+  printf("parent: begin\n");
+  pthread_t c;
+  Pthread_create(&c,NULL,child,NULL);
+  while(done == 0); //spin
+  printf("parent: end\n");
+  return 0;
+}
+```
+- 問題是目前程式主thread會一直spin導致浪費CPU資源,因此我們希望有某種方式能讓main thread sleep until condition 滿足(即child thread完成執行)
+
+## Definition and Routines
+- thread 可以使用condition variable 來等待一個條件成真,condition variable為一個顯式隊列,當某condition不滿足時,thrad可以將自己加入queue來等待
+- 聲明condition variable
+  1. pthread_cont_t c,這裏聲明c是一個condition variable
+  2. condition variable也兩種操作
+- condition variable操作
+  1. wait,讓thread進入sleep的方法
+  2. singal,讓thread從sleep中喚醒的方法
+
+  ```c
+  pthread_cond_wait(pthread_cond_t *c,pthread_mutex_t *m);
+  pthread_cond_signal(pthread_cond_t *c);
+  ```
+
+### 使用condition variable instead spinlock
+```c
+#include <pthread.h>
+#include <stdio.h>
+int done = 0;
+pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t c = PTHREAD_COND_INITIALIZER;
+
+void thr_exit() {
+  pthread_mutex_lock(&m);
+  done = 1;
+  pthread_cond_signal(&c);
+  pthread_mutex_unlock(&m);
+}
+
+void *child() {
+  printf("child \n");
+  thr_exit();
+  return NULL;
+}
+
+void thr_join() {
+  pthread_mutex_lock(&m);
+  while(done == 0)
+    pthread_cond_wait(&c,&m);
+  pthread_mutex_unlock(&m);
+}
+
+int main() {
+  printf("parent: begin \n");
+  pthread_t p;
+  pthread_create(&p,NULL,child,NULL);
+  thr_join();
+  printf("parent: end \n");
+  return 0;
+}
+```
