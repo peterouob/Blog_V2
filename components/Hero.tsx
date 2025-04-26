@@ -7,7 +7,7 @@ export function Hero(){
     return (
         <>
             <div>
-                <div className="hidden text-4xl md:text-7xl font-bold dark:text-white text-center md:flex">
+                <div className="hidden text-4xl  font-bold dark:text-white text-center md:flex">
                     Welcome to my Blog
                 </div>
             </div>

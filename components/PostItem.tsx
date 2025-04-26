@@ -7,7 +7,6 @@ import { Tag } from "@/components/Tags";
 interface PostItemProps {
   slug: string;
   title: string;
-  description?: string;
   date: string;
   tags?: Array<string>;
   key?: string;
@@ -16,22 +15,20 @@ interface PostItemProps {
 export function PostItem({
   slug,
   title,
-  description,
   date,
   tags,
   key,
 }: PostItemProps) {
   return (
-    <article className="flex flex-col gap-2 border-border border-b py-3">
+    <article className="flex flex-col gap-2 border-border border-b lg:p-3 md:p-3 pt-1 ">
       <div>
-        <h2 className="xl:text-3xl sm:text-xs font-bold">
+        <h2 className="xl:text-3xl text-xl font-bold">
           <Link href={"/" + slug}>{title}</Link>
         </h2>
       </div>
       <div className="flex gap-2">
         {tags?.map((tag) => <Tag tag={tag} key={key} />)}
       </div>
-      <div className="max-w-none text-muted-foreground">{description}</div>
       <div className="flex justify-between items-start">
         <dl>
           <dt className="sr-only">Publish On</dt>
@@ -43,7 +40,7 @@ export function PostItem({
         <Link
           key={key}
           href={slug}
-          className={cn(buttonVariants({ variant: "link" }), "text-xl")}
+          className={cn(buttonVariants({ variant: "link" }), "xl:text-xl text-lg")}
         >
           Read More...
         </Link>

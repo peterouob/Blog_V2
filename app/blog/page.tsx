@@ -27,11 +27,11 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
   const sortedTags = sortTagsByCount(tags);
   return (
     <Aurora>
-      <div className="container dark:bg-gray-800 bg-zinc-50 shadow-2xl rounded-xl z-40">
-        <div className="grid grid-cols-1 sm:grid-cols-12 lg:gap-3 mt-8">
-          <div className="col-span-12 sm:col-span-12 md:col-span-8 lg:text-xl min-h-full">
+      <div className="container max-h-screen dark:bg-gray-800 bg-zinc-50 shadow-2xl rounded-xl z-40">
+        <div className="grid grid-cols-1 sm:grid-cols-12 lg:gap-3 lg:mt-8">
+          <div className="col-span-12 sm:col-span-12 md:col-span-8 lg:text-xl">
             {displayPosts.map((post) => {
-              const {slug, date, title, description, tags } = post;
+              const {slug, date, title, tags } = post;
               return (
                 <ul key={slug}>
                   <li className="no-underline list-none  dark:text-zinc-50">
@@ -39,7 +39,6 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
                       slug={slug}
                       date={date}
                       title={title}
-                      description={description}
                       tags={tags}
                       key={slug}
                     />
@@ -52,7 +51,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
                 className="justify-center sm:justify-end mt-4 dark:text-zinc-50"
             />
           </div>
-          <Card className="col-span-12 row-start-3 sm:col-span-4 sm:col-start-9 sm:row-start-1 hidden lg:block mt-4 ">
+          <Card className="col-span-12 row-start-3 sm:col-span-4 sm:col-start-9 sm:row-start-1 hidden  lg:block lg:mt-4 ">
             <CardHeader>
               <CardTitle>Tags</CardTitle>
             </CardHeader>

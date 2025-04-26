@@ -11,7 +11,7 @@ export function PageHeader(){
     const pathname = usePathname()
 
     return (
-        <header className="hidden lg:block z-50 sticky w-full border-b border-border bg-background/95
+        <header className="hidden md:block lg:block z-50 sticky w-full border-b border-border bg-background/95
                 backdrop-blur supports-[backdrop-filter]:bg-background/60 h-[5rem] shadow-lg ">
             <div className="container flex  max-w-screen-2xl items-center ">
                 <nav className="flex items-center space-x-4 lg:space-x-6 mt-4">

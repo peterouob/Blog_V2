@@ -37,7 +37,7 @@ export function TableOfContents() {
     }, [isOpen]);
 
     return (
-        <div className="fixed top-4 right-4 z-50">
+        <div className="fixed top-4 right-4 z-50 lg:block md:block hidden ">
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 className="flex items-center gap-2 p-3 rounded-md bg-gray-800 text-white shadow-xl
@@ -51,15 +51,13 @@ export function TableOfContents() {
                 className={`fixed top-16 right-4 w-80 bg-white dark:bg-gray-900 p-5 shadow-2xl border rounded-lg 
                     dark:border-gray-700 transition-all duration-300 ease-in-out transform
                     ${isOpen ? "opacity-100 scale-100" : "opacity-0 scale-95 pointer-events-none"}
-                    z-50`}
+                    z-50 max-h-[70vh] overflow-y-auto `}
             >
-               <ul className="space-y-3">
-                    {headings.map(({ id, text, level }) => (
+               <ul className="space-y-3 ">
+                    {headings.map(({ id, text }) => (
                         <li
                             key={id}
-                            className={level === 2
-                                ? "ml-5 text-lg text-gray-600 dark:text-gray-400"
-                                : "text-xl font-medium text-gray-800 dark:text-gray-200"}
+                            className={"text-xl font-medium text-gray-800 dark:text-gray-200 overflow-scroll"}
                         >
                             <a href={`#${id}`} className="hover:text-blue-500 dark:hover:text-blue-400">
                                 {text}

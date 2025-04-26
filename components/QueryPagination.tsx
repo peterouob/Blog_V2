@@ -51,7 +51,7 @@ export function QueryPagination({ totalPages, className }: QueryPaginationProps)
                         <PaginationLink
                             href={createPageURL(page)}
                             isActive={currentPage === page}
-                            className="text-xl"
+                            className="lg:text-lg md:text-lg text-sm"
                         >
                             {page}
                         </PaginationLink>
