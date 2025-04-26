@@ -8,13 +8,12 @@ import React, { useState } from "react";
 interface HoverEffectProps {
   slug: string,
   title: string,
-  description?:string,
   date: string,
   tags?:Array<string>,
   className?:string
 }
 
-export const HoverEffect = ({slug,title,description,date,tags,className} : HoverEffectProps) => {
+export const HoverEffect = ({slug,title,date,tags,className} : HoverEffectProps) => {
   let [hoveredIndex, setHoveredIndex] = useState<string | null>(null);
   return (
     <div
@@ -33,7 +32,6 @@ export const HoverEffect = ({slug,title,description,date,tags,className} : Hover
 
         <Card>
           <CardTitle>{title}</CardTitle>
-          <CardDescription>{description}</CardDescription>
           {tags?.map(tag=><CardTag key={tag}/>)}
 
         </Card>

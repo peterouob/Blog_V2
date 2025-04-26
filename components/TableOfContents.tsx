@@ -5,7 +5,7 @@ import { Menu, X } from "lucide-react";
 
 export function TableOfContents() {
     const [headings, setHeadings] = useState<{ id: string; text: string; level: number }[]>([]);
-    const [isOpen, setIsOpen] = useState(false);  
+    const [isOpen, setIsOpen] = useState(false);
     const tocRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -48,7 +48,7 @@ export function TableOfContents() {
 
             <aside
                 ref={tocRef}
-                className={`fixed top-16 right-4 w-80 bg-white dark:bg-gray-900 p-5 shadow-2xl border rounded-lg 
+                className={`fixed top-16 right-4 w-80 bg-white dark:bg-gray-900 p-5 shadow-2xl border rounded-lg
                     dark:border-gray-700 transition-all duration-300 ease-in-out transform
                     ${isOpen ? "opacity-100 scale-100" : "opacity-0 scale-95 pointer-events-none"}
                     z-50 max-h-[70vh] overflow-y-auto `}
@@ -57,7 +57,7 @@ export function TableOfContents() {
                     {headings.map(({ id, text }) => (
                         <li
                             key={id}
-                            className={"text-xl font-medium text-gray-800 dark:text-gray-200 overflow-scroll"}
+                            className={"text-xl font-medium text-gray-800 dark:text-gray-200 "}
                         >
                             <a href={`#${id}`} className="hover:text-blue-500 dark:hover:text-blue-400">
                                 {text}

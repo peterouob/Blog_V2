@@ -21,7 +21,6 @@ export function CardPost() {
                             <HoverEffect
                                 slug={post.slug}
                                 title={post.title}
-                                description={post.description}
                                 date={post.date}
                                 tags={post.tags}
                                 key={post.slug}

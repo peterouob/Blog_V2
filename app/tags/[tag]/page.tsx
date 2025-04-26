@@ -50,7 +50,6 @@ export default function TagPages({params} : TagPagesProps) {
                                             slug={slug}
                                             date={date}
                                             title={title}
-                                            description={description}
                                             tags={tags}
                                         />
                                     </li>
