@@ -32,9 +32,9 @@ export default function RootLayout({
             <main>
                 {children}
             </main>
-            <SiteFooter />
         </div>
     </Providers>
+    <SiteFooter />
       </body>
     </html>
   );
