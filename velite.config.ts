@@ -39,7 +39,7 @@ export default defineConfig({
         rehypePlugins: [
             rehypeKatex,
             rehypeSlug,
-            [rehypePrettyCode, { theme:"solarized-light"}],
+            [rehypePrettyCode, { theme:"material-theme-ocean"}],
             [
                 rehypeAutolinkHeadings,
                 {

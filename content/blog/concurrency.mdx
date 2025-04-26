@@ -608,3 +608,40 @@ int main() {
   return 0;
 }
 ```
+
+- 由上面範例可以發現wait其實是在釋放鎖,以至於讓調用的thread sleep
+- 而singal則是讓thread被喚醒後重新獲得鎖
+
+### 如果沒有done的話呢
+```c
+void thr_exit() {
+  pthread_mutex_lock(&m);
+  pthread_cond_signal(&c);
+  pthread_mutex_unlock(&m);
+}
+
+void thr_join(){
+  pthread_mutex_lock(&m);
+  pthread_cond_wait(&c,&m);
+  pthread_mutex_unlock(&m);
+}
+```
+- 這會導致child thread立刻運行並且調用singal嘗試喚醒thread,此時沒有被喚醒的thread在所以凱著,而parent thread則會調用wait然後就一直卡住了
+
+### 如果不加鎖
+```c
+void thr_exit(){
+  done = 1;
+  pthread_cond_signal(&c);
+}
+
+void thr_join() {
+  if(done == 0) {
+    pthread_cond_wait(&c);
+  }
+}
+```
+- parent thread調用thr_join後檢查為done為0準備wait,此時在進入wait前parent thread被interrupts,child thread改變done為1,但同樣沒有thread在wait,接著parent thread就會一直卡住了
+
+## 生產者消費者問題
+
