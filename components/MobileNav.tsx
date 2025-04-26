@@ -17,7 +17,7 @@ export function MobileNav() {
             <SheetTrigger asChild>
                 <Button
                     variant="outline"
-                    className="top-0 right-0 absolute m-4 w-10 px-0 sm:hidden z-90"
+                    className="top-0 right-0 absolute m-4 w-10 px-0 sm:hidden z-40 bg-gray-800"
                 >
                     <Menu size={24} />
                 </Button>
