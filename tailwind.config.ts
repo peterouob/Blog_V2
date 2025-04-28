@@ -89,12 +89,18 @@ const config = {
   				to: {
   					backgroundPosition: '350% 50%, 350% 50%'
   				}
-  			}
+  			},
+			auroraMove: {
+				"0%": { transform: "translate3d(0px, 0px, 0px)" },
+				"50%": { transform: "translate3d(30px, -20px, 0px)" },
+				"100%": { transform: "translate3d(-20px, 30px, 0px)" },
+			},
   		},
   		animation: {
   			aurora: 'aurora 60s linear infinite',
   			'accordion-down': 'accordion-down 0.2s ease-out',
-  			'accordion-up': 'accordion-up 0.2s ease-out'
+  			'accordion-up': 'accordion-up 0.2s ease-out',
+			auroraMove: "auroraMove 20s ease-in-out infinite alternate",
   		}
   	}
   },
