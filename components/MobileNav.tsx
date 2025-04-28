@@ -17,7 +17,7 @@ export function MobileNav() {
             <SheetTrigger asChild>
                 <Button
                     variant="outline"
-                    className="top-0 right-0 absolute m-4 w-10 px-0 sm:hidden z-40 bg-gray-400"
+                    className="top-0 right-0 absolute m-4 w-10 px-0 sm:hidden z-50 bg-gray-400"
                 >
                     <Menu size={24} />
                 </Button>
@@ -25,7 +25,7 @@ export function MobileNav() {
             <SheetContent side="right">
                 <SheetTitle><ThemeMobile /></SheetTitle>
                 <MobileLink onOpenChange={setOpen} href="/" className="flex items-center">
-                    <span className="font-bold">{siteConfig.name}</span>
+                    <span className="font-bold">首頁</span>
                 </MobileLink>
                 <div className="flex flex-col gap-3 mt-3">
                     <MobileLink onOpenChange={setOpen} href="/blog">Blog</MobileLink>
