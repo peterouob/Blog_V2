@@ -643,5 +643,166 @@ void thr_join() {
 ```
 - parent thread調用thr_join後檢查為done為0準備wait,此時在進入wait前parent thread被interrupts,child thread改變done為1,但同樣沒有thread在wait,接著parent thread就會一直卡住了
 
-## 生產者消費者問題
+## 生產者消費者問(Bound Buffer) Problem
+- For example, 在multi Web server 中 producer 將HTTP request into a work queue,並且consumer對這個queue進行消費
+- Bound buffer也用在pipe the output 上
+  ```bash
+  grep foo file.txt | wc -l
+  ```
+  - this example runs two process concurrently
+- 由於Bound Buffer會shared resource,因此我們需要保證他不會發生race condition
 
+### Producer/Consumer Threads v1
+```c
+void *producer(void *arg) {
+  int i;
+  int loops = (int)arg;
+  for(i=0;i<loops;i++){
+    put(i);
+  }
+}
+
+void *consumer(void *arg) {
+  while(1) {
+    int tmp = get();
+    printf("%d\n",tmp);
+  }
+}
+
+```
+## A Broken Solution
+- Single CV And If Statement
+```c
+int loops; // must initialize somewhere...
+ cond_t cond;
+ mutex_t mutex;
+
+ void *producer(void *arg) {
+  int i;
+  for (i = 0; i < loops; i++) {
+    Pthread_mutex_lock(&mutex); // p1
+  if (count == 1) // p2
+    Pthread_cond_wait(&cond, &mutex); // p3
+  put(i); // p4
+  Pthread_cond_signal(&cond); // p5
+  Pthread_mutex_unlock(&mutex); // p6
+ }
+}
+
+ void *consumer(void *arg) {
+  int i;
+  for (i = 0; i < loops; i++) {
+    Pthread_mutex_lock(&mutex); // c1
+  if (count == 0) // c2
+    Pthread_cond_wait(&cond, &mutex); // c3
+  int tmp = get(); // c4
+  Pthread_cond_signal(&cond); // c5
+  Pthread_mutex_unlock(&mutex); // c6
+  printf("%d\n", tmp);
+ }
+}
+```
+- 目前會有一個問題,當producer和consumer同時運行時,producer在p2時會檢查count == 1,此時consumer也在c2檢查count == 0,這樣會導致兩個thread都會進入wait狀態,導致死鎖
+- 這個問題稱為lost wakeup,當producer在p2時,如果consumer在c2時,producer會將consumer從wait中喚醒,但consumer會在c2檢查count == 0,因此會再次進入wait狀態
+
+### Beter Solution
+```c
+int loops; // must initialize somewhere...
+ cond_t cond;
+ mutex_t mutex;
+
+ void *producer(void *arg) {
+  int i;
+  for (i = 0; i < loops; i++) {
+    Pthread_mutex_lock(&mutex); // p1
+  while (count == 1) // p2
+    Pthread_cond_wait(&cond, &mutex); // p3
+  put(i); // p4
+  Pthread_cond_signal(&cond); // p5
+  Pthread_mutex_unlock(&mutex); // p6
+ }
+}
+
+ void *consumer(void *arg) {
+  int i;
+  for (i = 0; i < loops; i++) {
+    Pthread_mutex_lock(&mutex); // c1
+  while (count == 0) // c2
+    Pthread_cond_wait(&cond, &mutex); // c3
+  int tmp = get(); // c4
+  Pthread_cond_signal(&cond); // c5
+  Pthread_mutex_unlock(&mutex); // c6
+  printf("%d\n", tmp);
+ }
+}
+```
+- 這個方法的好處是,當producer在p2時,如果consumer在c2,producer會將consumer從wait中喚醒,但consumer會在c2檢查count == 0,因此會再次進入wait狀態
+- 這樣producer就不會進入wait狀態,而是會繼續運行,直到count != 1
+
+## Use condition variable to signal
+```c
+cond_t empty,fill;
+mutex_t mutex;
+
+void *producer(void *arg) {
+  int i;
+  for (i = 0; i < loops; i++) {
+    Pthread_mutex_lock(&mutex);
+    while (count == 1)
+      Pthread_cond_wait(&empty, &mutex);
+    put(i);
+    Pthread_cond_signal(&fill);
+    Pthread_mutex_unlock(&mutex);
+  }
+}
+
+void *consumer(void *arg) {
+  int i;
+  for (i = 0; i < loops; i++) {
+    Pthread_mutex_lock(&mutex);
+    while (count == 0)
+      Pthread_cond_wait(&fill, &mutex);
+    int tmp = get();
+    Pthread_cond_signal(&empty);
+    Pthread_mutex_unlock(&mutex);
+    printf("%d\n", tmp);
+  }
+}
+```
+- producer thread等待condition variable empty 發信號給fill
+- consumer thread等待condition variable fill 發信號給empty
+- 這樣producer和consumer就不會互相影響,而是各自等待各自的condition variable
+
+### 使用While而非IF
+- 對condition variable使用while解決了spurios wakeup情況,某些thread庫由於實現細節可能會自出現,一個信號喚醒兩個thread的情況,再次檢查等待條件就是假喚醒的另一個遠因
+
+## Cover Condition
+```c
+int byteLeft = MAX_HEAP_SIZE;
+cond_t c;
+mutex_t m;
+
+void *allocate(int size) {
+  pthread_mutex_lock(&m);
+  while(byteLeft < size) {
+    pthread_cond_wait(&c, &m);
+  }
+
+  void *ptr = ... // get memory from heap
+  byteLeft -= size;
+  pthread_mutex_unlock(&m);
+  return ptr;
+}
+
+void *free(void *ptr, int size) {
+  pthread_mutex_lock(&m);
+  byteLeft += size;
+  pthread_cond_signal(&c);
+  pthread_mutex_unlock(&m);
+}
+```
+- 如果單純使用singal的話會有一個問題,假設P0調用`allocate(100)`,接著P1調用`allocate(10)`,此時因為沒有足夠的空閑內存,因此P0,P1都會在thread上等待
+- 此時第三個thread調用`free(20)`,當他發送singal信號時,可能不會喚醒P1,而P0因為內存不夠因此繼續等待,因為不知道喚醒哪一個(或哪些)thread,因此無法正常工作
+
+### 使用cover condition解決
+- 能夠使用`pthread_cond_broadcast`來喚醒所有的thread,解決了不知道要喚醒哪一個thread的問題,但同時因為全部thread都被喚醒,因此造成不必要的開銷
