@@ -806,3 +806,170 @@ void *free(void *ptr, int size) {
 
 ### 使用cover condition解決
 - 能夠使用`pthread_cond_broadcast`來喚醒所有的thread,解決了不知道要喚醒哪一個thread的問題,但同時因為全部thread都被喚醒,因此造成不必要的開銷
+
+# Semaphores
+
+## Semaphores Definition
+- semaphore是一個整數,可以調用`sem_wait`和`sem_post`來進行操作
+  - 調用`sem_wait`時,會將semaphore的值減1,如果值為0則會進入wait狀態
+  - 調用`sem_post`時,會將semaphore的值加1,如果有thread在wait狀態則會喚醒他
+- 對於semaphore的初始化可為0和1
+
+```c
+#include <semaphore.h>
+sem_t s;
+sem_init(&s, 0, 1); // init semaphore s to 1
+```
+
+## Binary Semaphore (mutex)
+- 我們可以將critical section使用semaphore的wait和post環繞,但是否正確運作,semaphore的初始值非常重要
+- 如果一開始初始為0,因為調用wait導致semaphore值變為$-1$然後等待,會造成任何thread都無法進入critical section
+  - 因此初始化時的$x=1$
+```c
+#include <semaphore.h>
+sem_t m ;
+sem_init(&m, 0, x);
+sem_wait(&m); // lock -> decrement
+// critical section
+sem_post(&m); // unlock -> increment
+```
+
+## Semaphores for Ordering
+- semaphore也可以用來暫停某一個thread等待某一個條件成立
+- 這種情況下通常暫停的thread會等待試圖完成條件的thread發送信號,因此可以將semaphore當作condition variable
+- 此時應該要將$x=0$,這樣當主thread調用wait時會進入wait狀態,直到子thread調用post發送信號才會喚醒
+```c
+#include <semaphore.h>
+sem_t s;
+
+void *child() {
+  printf("child \n");
+  sem_post(&s); // signal
+  return NULL;
+}
+
+int main() {
+  sem_init(&s, 0, x);
+  printf("parent: begin \n");
+  pthread_t p;
+  pthread_create(&p, NULL, child, NULL);
+  sem_wait(&s); // wait
+  printf("parent: end \n");
+  return 0;
+}
+```
+
+## Producer Consumer Problem
+- 使用empty和full分別表示緩衝區空或滿
+```c
+int buffer[BUFFER_SIZE];
+int fill = 0;
+int use = 0;
+
+void put(int value) {
+  buffer[fill] = value;
+  fill = (fill + 1) % BUFFER_SIZE;
+}
+
+int get() {
+  int value = buffer[use];
+  use = (use + 1) % BUFFER_SIZE;
+  return value;
+}
+
+sem_t empty, full;
+void *producer(void *arg) {
+  int i;
+  for (i = 0; i < loops; i++) {
+    sem_wait(&empty);
+    put(i);
+    sem_post(&full);
+  }
+}
+
+void *consumer(void *arg) {
+  int i;
+  for (i = 0; i < loops; i++) {
+    sem_wait(&full);
+    int tmp = get();
+    sem_post(&empty);
+    printf("%d\n", tmp);
+  }
+}
+
+int main() {
+  // ...
+  sem_init(&empty, 0, BUFFER_SIZE);
+  sem_init(&full, 0, 0);
+  // ...
+}
+```
+
+- 目前的設計會有一個問題
+  - 第一次當producer調用wait暫停等待consumer信號正常運行
+  - 但第二次的時候因為producer並不是變為負數,因此會跳過wait的狀態,讓porucer繼續運行
+- 這樣會導致producer和consumer都會同時使用同一個buffer
+
+### 增加信號來修復問題
+
+```c
+void *producer(void *arg) {
+  int i;
+  for(i=0;i<loops;i++){
+    sem_wait(&mutex); //P0
+    sem_wait(&empty);
+    put(i);
+    sem_post(&full);
+    sem_post(&mutex);
+  }
+}
+
+void *consumer(void *arg) {
+  int i;
+  for(i=0;i<loops;i++){
+    sem_wait(&mutex); //P1
+    sem_wait(&full);
+    int tmp = get();
+    sem_post(&empty);
+    sem_post(&mutex);
+  printf("%d\n",tmp);
+  }
+}
+```
+- 目前的方案似乎因為使用mutex可以來保護buffer,但可能會發生死鎖問題
+- 這是因為producer第一行**P0**就先獲得mutex,然後發送給consumer信號時,consumer嘗試獲取鎖**P1**但producer還沒釋放,因此造成死鎖
+
+### 改變鎖的順序
+```c
+void *producer(void *arg) {
+  int i;
+  for(i=0;i<loops;i++){
+    sem_wait(&empty);
+    sem_wait(&mutex);
+    put(i);
+    sem_post(&mutex);
+    sem_post(&full);
+  }
+}
+
+void *consumer(void *arg) {
+  int i;
+  for(i=0;i<loops;i++){
+    sem_wait(&full);
+    sem_wait(&mutex);
+    int tmp = get();
+    sem_post(&mutex);
+    sem_post(&empty);
+  printf("%d\n",tmp);
+  }
+}
+
+int main() {
+  // ...
+  sem_init(&empty, 0, BUFFER_SIZE); // MAX BUFFER_SIZE are empty to begin with...
+  sem_init(&full, 0, 0); // ... and 0 are full
+  sem_init(&mutex, 0, 1); // mutex=1 because it is lock
+  // ...
+}
+```
+- 現在的方案producer會先釋放鎖再發送給consumer信號,這樣就不會造成死鎖的問題,同樣consumer也會先釋放鎖再發送給producer信號

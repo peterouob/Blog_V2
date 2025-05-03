@@ -1,6 +1,6 @@
 ---
 title: kafka範例
-description: 簡單使用docker deploy kafka and kafka ui 
+description: 簡單使用docker deploy kafka and kafka ui
 date: 2025-02-26
 tags: ["code","mq"]
 ---
@@ -55,7 +55,7 @@ networks:
 
 ## 啟動
 ```yaml
-docker compose up -d 
+docker compose up -d
 ```
 
 # 檢查kafka狀態
@@ -96,3 +96,5 @@ docker exec -it kafka kafka-console-producer.sh --broker-list kafka:9092 --topic
 ```yaml
 docker exec -it kafka kafka-console-consumer.sh --bootstrap-server kafka:9092 --topic test-topic --from-beginning
 ```
+
+# 使用golang操作kafka
