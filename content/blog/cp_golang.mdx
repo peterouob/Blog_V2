@@ -5,10 +5,19 @@ date: 2025-05-03
 tags: ["code","go"]
 ---
 
-# 何謂死鎖
-
+# 造成死鎖的條件
+1. 禁止搶佔(No Preemption): 系統資源不能被強制從thread中移出,如果系統資源不是主動release而是被preempt則會發生不可預期事件
+2. 持有和等待(Hold and Wait): 一個thread在等待時持有concurrency resource,持有concurrency resource的thread還在等待其他resource
+3. 互斥(Mutual Exclusion): 資源在同一時刻只能被分配到一個thread,無法實現多thread共享並且resource具有排他性
+4. 循環等待(Circular Waiting): 一系列thread相互持有其他thread所需的resource,thread之間必須有一個循環依賴關係
+* 上述四個條件同時滿足才會發生死鎖,只要破壞掉其中一個就可以avoid deadlock
 
 # 哲學家就餐問題
+* 定義筷子和哲學家
+  - 筷子是併發資源,具有排他性,因此具備鎖實現互斥並且禁止搶佔(不持有這根筷子的哲學家不能unlock)
+  - 每位哲學家都需要左手邊的筷子和右手邊的筷子
+  - status代表哲學家的狀態(冥想,餓了,吃飯)
+  - 還有另一種狀態就是持有一根筷子並請求另一根
 
 ## 問題描述
 ```go
@@ -87,6 +96,86 @@ if i >= 1 {
 		}
 ```
 
+## 解決方式2
+- 使用奇偶性解決
+```go
+func (p *Philosopher) dine() {
+	for {
+		mark(p, "冥想")
+		randomPause(10)
+		mark(p, "餓了")
+		if p.id%2 == 0 {
+			p.leftChopstick.Lock()
+			mark(p, "拿左邊快子")
+			p.rightChopstick.Lock()
+			mark(p, "吃飯")
+			randomPause(10)
+			p.rightChopstick.Unlock()
+			p.leftChopstick.Unlock()
+		} else {
+			p.rightChopstick.Lock()
+			mark(p, "拿右邊快子")
+			p.leftChopstick.Lock()
+			mark(p, "吃飯")
+			randomPause(10)
+			p.leftChopstick.Unlock()
+			p.rightChopstick.Unlock()
+		}
+	}
+}
+```
+
+## 解決方式3
+- 資源分級
+```go
+func (p *Philosopher) dine() {
+	for {
+		mark(p, "冥想")
+		randomPause(10)
+		mark(p, "餓了")
+		if p.id == 5 {
+			p.rightChopstick.Lock()
+			mark(p, "拿起右邊的筷子")
+			p.leftChopstick.Lock()
+			mark(p, "吃飯")
+			randomPause(10)
+			p.leftChopstick.Unlock()
+			p.rightChopstick.Unlock()
+		} else {
+			p.leftChopstick.Lock()
+			mark(p, "拿起左邊的筷子")
+			p.rightChopstick.Lock()
+			mark(p, "吃飯")
+			randomPause(10)
+			p.rightChopstick.Unlock()
+			p.leftChopstick.Unlock()
+		}
+	}
+}
+```
+
+## 解決方法4
+- 引入服務生
+```go
+func (p *Philosopher) dine() {
+	for {
+		mark(p, "冥想")
+		randomPause(10)
+		mark(p, "餓了")
+		p.mu.Lock()
+		p.leftChopstick.Lock()
+		mark(p, "拿起左邊的筷子")
+		p.rightChopstick.Lock()
+		p.mu.Unlock()
+		mark(p, "吃飯")
+		randomPause(10)
+		p.rightChopstick.Unlock()
+		p.leftChopstick.Unlock()
+	}
+}
+```
+
 # 理髮師問題
+
 # 水工廠問題
 # fizz buzz
