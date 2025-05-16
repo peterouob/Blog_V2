@@ -33,5 +33,12 @@ int main(int argc, char *argv[]) {
   int x = 3;
   printf("location of stack: %p\n", (void *)&x);
 }
-
 ```
+
+# Mechanisms: Address Translation
+- 實現CPU虛擬化時,我們遵循的準則被稱為Limited Direct Execution (LDE)
+  * LDE原則是os盡量不干擾CPU執行process,只有在關鍵時才及時介入(interposing)來保持對硬體得控制
+- 利用基於硬體的地址轉換(hardware-based address translation)又稱address translation 來保證高效靈活的虛擬化
+  * 使用address translation,硬體對每次memory訪問進行處理都將指令中的victual address轉為十集的physical address來實現受限執行
+  * 因此每次memory訪問時,硬體都會進行address translation,將應用程式的memory引用重定位到memory實際位置
+- 

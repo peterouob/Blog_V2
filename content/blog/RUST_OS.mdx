@@ -1,0 +1,1017 @@
+---
+title: 使用RUST編寫OS
+description: 學習RUST同時學習OS
+date: 2024-6-27
+tags: ["rust","code","os"]
+---
+# 序言
+本系列全部內容主要參考[Writing an OS in Rust ](https://os.phil-opp.com/)，並加上個人理解以及閱讀過後認為可以補充的地方，以會參考舊文章[Writing an OS in Rust (First Edition)](https://os.phil-opp.com/edition-1/)，以及[Rust聖經](https://course.rs/about-book.html)，主要目的是學習OS，因此會跳過一些太重點於RUST語言的部分，歡迎參考原文。
+
+## 創建項目
+```bash
+cargo new blog_os --bin
+```
+`--bin` 說明我們要創立一個可執行文件而非lib
+
+## 禁用標準庫
+一般而言我們都會調用rust標準庫完成類似println!的效果，而因為我們要自行編寫操作系統所以可以先忽略標準庫
+
+```rust
+#![no_std]
+```
+
+## 實現panic處理函數
+panic_handler定義了一個函數，會在panic時調用，因為現在現在時no_std的環境，所以需要自行編寫
+```rust
+use core::panic::PanicInfo;
+
+#[panic_handler]
+fn panic(_info : &PanicInfo) -> ! {
+    loop{}
+}
+```
+- 類型PanicInfo的參數包含panic發生的文件名，代碼函數和可選錯誤訊息
+- 這個函數不返回(永遠不會正常結束)所以計為發散函數(never type) 寫為 !，因此裡面包了一個loop
+
+## eh_personality 語言項
+- eh_personality 語言標記函數，將被實現用於榐展開，當發生panic時，Rust將使用榐展開，確保內存都被釋放
+
+### 禁用榐展開
+- Cargo.toml
+```toml
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
+```
+
+## Start 語言項
+- 一般的具備標準庫的Rust會從一個名為crt0(C runtime zero)開始運行，他會建立一個適合運行C的環境，包含榐的創建和可傳入參數
+- 因為我們的程序禁用了標準庫，因此需要重寫入口點
+- 不使用預定入口點可以使用 `#![no_main]`
+
+```rust
+#![no_std]
+#![no_main]
+
+#[no_mangle]
+pub extern "C" fn _start() -> ! {
+    loop {}
+}
+
+```
+
+- 使用 `#[no_mangle]` 避免函數名被重整而導致linked找不到入口點
+
+
+# 最小內核
+
+## 引導啟動
+
+### 當我們啟動電腦時，主板內的ROW儲存的固件(firmware)將會運行，他將會負責電腦的加電自檢(power-on self test)和可用內存的檢測(available ram) 以及CPU和其他硬件的預加載，之後將尋找一個可引導的儲存介質(bootable disk)，並開始啟動內核(kernel)
+
+---
+
+### x86架構支持兩種固件標準：BIOS和UEFI，本系列將會以BIOS為標準
+
+## BIOS 啟動
+
+### 當電腦啟動時
+1. 主板上特殊的閃存中儲存的BIOS將會被加載
+2. BIOS將會加電自檢，初始化硬件，然後尋找可引導的儲存介質
+3. 當找到後，電腦控制全將轉移給引導程序(bootloader)
+   - 一段儲存在存儲介質的開頭，512byte的程序片段，大多數引導程序都不會超過512byte，所以通常情況下都會分為
+     1. 優先啟動，長度不超過512byte，儲存在介質開頭的第一階段引導程序(first stage bootloader)
+     2. 隨後加載，長度較第一段長，儲存在其他位置的第二階段引導程序(second stage bootloader)
+
+### 引導程序的作用
+1. 引導程序先決定內核位址，並將內核加載到內存
+2. 引導程序將CPU從16位元的實模式，切換到32位元的保護模式(protected mod)，最終再切換到64位元的長模式(long mod)，此時才能訪問所有64位元的內存器和主位元
+3. 引導程序能從BIOS查詢特定訊息，並轉傳到內核，如查詢和傳遞內存映射表 (memory map)
+
+## 使用Assembly編寫一個簡單的BIOS
+- 將會在畫面上顯示A到Z
+```asm
+mov ah, 0x0e
+mov al, 65
+int 0x10
+
+loop:
+inc al
+cmp al, 'Z' + 1
+je exit
+int 0x10
+jmp loop
+
+exit:
+jmp $
+times 510-($-$$) db 0 #內存啟動位址
+db 0x55, 0xaa
+
+```
+
+## Multiboot 標準
+
+| Field         | Type            | Value                                   |
+|---------------|-----------------|-----------------------------------------|
+| magic number  | u32             | 0xE85250D6                              |
+| architecture  | u32             | 0 for i386, 4 for MIPS                  |
+| header length | u32             | total header size, including tags       |
+| checksum      | u32             | -(magic + architecture + header_length) |
+| tags          | variable        |                                         |
+| end tag       | (u16, u16, u32) | (0, 0, 8)                               |
+
+
+```asm
+section .multiboot_header
+header_start:
+    dd 0xe85250d6                ; magic number (multiboot 2)
+    dd 0                         ; architecture 0 (protected mode i386)
+    dd header_end - header_start ; header length
+    ; checksum
+    dd 0x100000000 - (0xe85250d6 + 0 + (header_end - header_start))
+
+    ; insert optional multiboot tags here
+
+    ; required end tag
+    dw 0    ; type
+    dw 0    ; flags
+    dd 8    ; size
+header_end:
+```
+- 0xe85250d6 為 multiboot 的 magic number
+- dd 為 defined double 32 bit
+- dw 為 defined word 16 bit
+- 0x100000000 為特殊記憶體位置，可以在compiler的時候避免報錯
+## 最小內核
+
+### 安裝Rust Nightly
+1. stable
+2. beta
+3. nightly
+
+#### 安裝方法
+1. 使用rustup
+    ```bash
+    rustup override add nightly
+    ```
+2. 新增名為rust-toolchain的文件且內容為nightly
+
+### 目標配置清單
+- 使用目標配置清單是為了讓我們的系統不依賴底層配置系統
+- 編寫目標系統可以使用json格式完成
+```json
+{
+  "llvm-target": "x86_64-unknown-none",
+  "data-layout": "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128",
+  "arch": "x86_64",
+  "target-endian": "little",
+  "target-pointer-width": "64",
+  "target-c-int-width": "32",
+  "os": "none",
+  "executables": true
+}
+```
+- 因為要在裸機上運行，因此llvm-target為none
+
+#### 添加額外配置
+- 不使用平台默認連接器，使用跨平台LLD鏈接器
+```json
+{
+  "linker-flavor": "ld.lld",
+  "linker": "rust-lld"
+}
+```
+##### 禁用紅區
+- 紅區為一種優化方式，當有n個變量時，將會調整指針到一個合適的地方，來確保返回值和局部變量有足夠空間。不過CPU異常處理機制會覆蓋紅區，但被中斷的函數卻引用這些數據，因此從中斷恢復後反而會引發更大錯誤
+- 為了處理中斷，我們需要禁用紅區(redzone)，避免榐指針優化進而破壞榐
+```json
+{
+  "disable-redzone": true
+}
+```
+
+##### 禁用SIMD
+- 操作系統在處理硬件中斷時，需要保存所有寄存器信息到內存中，在中斷結束後再將其恢復以供使用。所以說，如果內核需要使用SIMD寄存器，那麼每次處理中斷需要備份非常多的數據（512-1600字節），這會顯著地降低性能。要避免這部分性能損失
+- 對內核禁用SIMD，提高性能表現(不代表內核不支援SIMD)
+```json
+{
+  "features": "-mmx,-sse,+soft-float"
+}
+```
+
+
+#### 完整目標配置清單
+```json
+{
+    "llvm-target": "x86_64-unknown-none",
+    "data-layout": "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128",
+    "arch": "x86_64",
+    "target-endian": "little",
+    "target-pointer-width": "64",
+    "target-c-int-width": "32",
+    "os": "none",
+    "executables": true,
+    "linker-flavor": "ld.lld",
+    "linker": "rust-lld",
+    "panic-strategy": "abort",
+    "disable-redzone": true,
+    "features": "-mmx,-sse,+soft-float"
+}
+```
+
+
+# VGA
+## VGA字符模式
+
+### VGA字符緩衝區
+
+| Bit(s) | Value             |
+|--------|-------------------|
+| 0-7    | 	ASCII code point |
+| 8-11   | Foreground color  |
+ | 12-14  | Background color  |
+| 15     | Bik               |
+
+- 要修改VGA字符緩衝區，可以投過memory-mapped IO 的方式讀取或寫入`0xb8000` 這個位址
+
+### 包裝到RUST模塊
+1. 新增名為vga_buffer.rs
+2. 在入口區塊use這個mod
+
+## 枚舉顏色
+- 使用rust中的enum來枚舉這些顏色以方便操作
+- 使用 `#[allow(dead_code)]` 可以避免編譯器對未使用變量產生錯誤
+- 使用derive讓他們使用多個trait，以遵循複製語意(Copy trait)，也可以讓他們被比較或打印
+- 使用 `#[repr(u8)]` 讓其中的元素都能固定以u8的形式儲存
+```rust
+#[allow(dead_code)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+pub enum Color {
+    Black = 0,
+    Blue = 1,
+    Green = 2,
+    Cyan = 3,
+    Red = 4,
+    Magenta = 5,
+    Brown = 6,
+    LightGray = 7,
+    DarkGray = 8,
+    LightBlue = 9,
+    LightGreen = 10,
+    LightCyan = 11,
+    LightRed = 12,
+    Pink = 13,
+    Yellow = 14,
+    White = 15,
+}
+```
+- 為了描述包含前景色或背景色，基於u8創建一個新類型
+- 確保和先前的枚舉有相同內存佈局(u8)，因此添加 `#[repr(transparent)]` 標記
+```rust
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+struct ColorCode(u8);
+
+impl ColorCode {
+    fn new(foreground: Color, background: Color) -> ColorCode {
+        ColorCode((background as u8) << 4 | (foreground as u8))
+    }
+}
+```
+
+## 字符緩衝區
+
+- 使用 `#[repr(C)]` 標記以確保和照C語言約定的順序佈局他的成員變量，確保能映射到正確的內存片段
+- 對Buffer一樣使用 `#[repr(transparent}]` 來確保有相同的內存
+- 在Buffer這個struct中的chars成員類型皆為 `ScreenChar的二維陣列`
+```rust
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(C)]
+struct ScreenChar {
+    ascii_character: u8,
+    color_code: ColorCode,
+}
+
+const BUFFER_HEIGHT: usize = 25;
+const BUFFER_WIDTH: usize = 80;
+
+#[repr(transparent)]
+struct Buffer {
+    chars: [[ScreenChar; BUFFER_WIDTH]; BUFFER_HEIGHT],
+}
+```
+
+## 打印字符
+- 創建Writer類型，以便將字符寫在屏幕的最後一行，並在寫滿或遇到`\n`時將字符向上移位
+### 創建Writer類型
+
+- column_position 追蹤光標在最後一行的位址
+- color_code 決定了字符的前景和背景顏色
+- buffer 則是顯示宣告了這個變數的生命週期(告訴編譯器這個變數何時有效)，宣告為static時，代表只在這個程序運行期間有效，
+```rust
+pub struct Writer {
+    column_position: usize,
+    color_code: ColorCode,
+    buffer: &'static mut Buffer,
+}
+```
+- 我們使用match來分辨接收到的字串，如果為 `\n` 就會換行
+```rust
+impl Writer {
+    pub fn write_byte(&mut self, byte: u8) {
+        match byte {
+            b'\n' => self.new_line(),
+            byte => {
+                if self.column_position >= BUFFER_WIDTH {
+                    self.new_line();
+                }
+
+                let row = BUFFER_HEIGHT - 1;
+                let col = self.column_position;
+
+                let color_code = self.color_code;
+                self.buffer.chars[row][col] = ScreenChar {
+                    ascii_character: byte,
+                    color_code,
+                };
+                self.column_position += 1;
+            }
+        }
+    }
+
+    fn new_line(&mut self) {/* TODO */}
+}
+```
+#### 避免易失操作
+- 因為我們對於buffer的操作只有寫入而沒有讀出，此時編譯器會不知道我們在操作VGA緩衝區的內存，因此會忽略這些她認為沒有必要的操作
+
+##### 更改Buffer
+- `Volatile<>` 類型為一個泛型，確保不會因為通過普通的寫入操作，意外寫入數據
+```rust
+use volatile::Volatile;
+
+struct Buffer {
+    chars: [[Volatile<ScreenChar>; BUFFER_WIDTH]; BUFFER_HEIGHT],
+}
+```
+##### 修改writer方法
+- 使用writer來避免編譯器不再優化這個寫入操作
+```rust
+impl Writer {
+    pub fn write_byte(&mut self, byte: u8) {
+        match byte {
+            b'\n' => self.new_line(),
+            byte => {
+                ...
+
+                self.buffer.chars[row][col].write(ScreenChar {
+                    ascii_character: byte,
+                    color_code: color_code,
+                });
+                ...
+            }
+        }
+    }
+    ...
+}
+```
+
+## 格式化宏
+```rust
+use core::fmt;
+
+impl fmt::Write for Writer {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.write_string(s);
+        Ok(())
+    }
+}
+
+
+pub fn print_something() {
+    use core::fmt::Write;
+    let mut writer = Writer {
+        column_position: 0,
+        color_code: ColorCode::new(Color::Yellow, Color::Black),
+        buffer: unsafe { &mut *(0xb8000 as *mut Buffer) },
+    };
+
+    writer.write_byte(b'H');
+    writer.write_string("ello! ");
+    write!(writer, "The numbers are {} and {}", 42, 1.0/3.0).unwrap();
+}
+```
+
+## 換行
+- 將最頂上的一行刪除後，在最後一行的起始開始打印
+- 遍歷屏幕上的每個字符，把每個字符移動到他上方一行的地方
+- `..` 符號是區間標號，為左閉右開，因此不包含上界
+- 最外層的枚舉省略了0，因為這一行應該被移出屏幕，即他將被下一行覆蓋
+```rust
+impl Writer {
+    fn new_line(&mut self) {
+        for row in 1..BUFFER_HEIGHT {
+            for col in 0..BUFFER_WIDTH {
+                let character = self.buffer.chars[row][col].read();
+                self.buffer.chars[row - 1][col].write(character);
+            }
+        }
+        self.clear_row(BUFFER_HEIGHT - 1);
+        self.column_position = 0;
+    }
+
+    fn clear_row(&mut self, row: usize) {/* TODO */}
+}
+```
+
+### 清空
+- 通過向緩衝區寫入空格字符，可以清空一整行的字符位置
+```rust
+impl Writer {
+    fn clear_row(&mut self, row: usize) {
+        let blank = ScreenChar {
+            ascii_character: b' ',
+            color_code: self.color_code,
+        };
+        for col in 0..BUFFER_WIDTH {
+            self.buffer.chars[row][col].write(blank);
+        }
+    }
+}
+```
+
+## 全局接口
+- 在編寫其他模塊時，我們希望能隨時擁有writer實例，便能使用他的方法
+
+### 使用延遲初始化
+- 在一般引用static時，rust要求我們使用一個稱為常量求值器(const evaluator)的組建，以便編譯時的初始化。這個問題會需要使用常函數(const function)解決，不過常函數存在不穩定性外，編譯時也沒有辦法直接轉為裸指針變量
+- 使用 `lazy_static!` 宏，定義了延遲初始化(lazily initialized)的靜態變量，這個變量將在第一次引用做計算，而非編譯時計算
+
+#### 引入包
+- Cargo.toml
+```toml
+[dependencies.lazy_static]
+version = "1.0"
+features = ["spin_no_std"]
+```
+#### 定義WRITER
+
+```rust
+use lazy_static::lazy_static;
+
+lazy_static! {
+    pub static ref WRITER: Writer = Writer {
+        column_position: 0,
+        color_code: ColorCode::new(Color::Yellow, Color::Black),
+        buffer: unsafe { &mut *(0xb8000 as *mut Buffer) },
+    };
+}
+```
+##### 使用 spinlock 定義可變性
+- 目前我們宣告的WRITER為不可變變量，因此不可使用，如果要的話需要使用可變靜態(mutable static)的變量，但會讓所有變量變為`unsafe`，容易導致數據競爭或其他問題
+- 使用 `static mut` 極為不被贊成，改用 `RefCall` 或 `UnsafeCall` 等類型提供的內部可變性(interior mutability)，但都不滿足Sync約束，所以不能在靜態變量中使用它們
+- 因為我們內部代碼還沒有線程的概念，因此沒辦法使用一般的 `Mutex`
+- 使用自旋鎖(spinLock)實現基本互斥鎖功能，自旋鎖不會調用阻塞邏輯，而是會有一個小的無限循環來嘗試獲得鎖，也因此會不斷佔用CPU直到釋放
+
+---
+
+- Cargo.toml
+```toml
+[dependencies]
+spin = "0.5.2"
+```
+- 為WRITER實現內部可變性
+```rust
+use spin::Mutex;
+...
+lazy_static! {
+    pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
+        column_position: 0,
+        color_code: ColorCode::new(Color::Yellow, Color::Black),
+        buffer: unsafe { &mut *(0xb8000 as *mut Buffer) },
+    });
+}
+```
+
+## 安全性
+- 現在我們的代碼只剩一個unsafe指向 `0xb80000` 的buffer類型引用，我們需要確保所有的動作都是安全的，避免因為Rust訪問每個數組檢查邊界，而不經意越界或到緩衝區之外
+
+#### 標準庫 `ptintln!` 宏的定義
+- 使用`#[marco_export]`標示讓整個包不再基於`std::macros::println`導入，而是使用`use std::println`，因為它讓整個包(crate)和基於他的包都能訪問，而不僅限於定義的模塊
+- 宏的定義很像`match`語句有多個分支
+  - `()=>` 代表不傳入參數
+  - `($($arg:tt)*)=>` 代表接收任何參數，並調用`print!`宏擴展
+  - `tt`為宏中的特數類型，他的底層邏輯會將傳入的任何參數遞歸處理
+
+##### tt撕咬機
+- `標記樹撕咬機` (TT muncher) 是一種遞歸宏，其工作機制有賴於對輸入的順次、逐步處理 (incrementally processing) 。處理過程的每一步中，它都將匹配並移除（“撕咬”掉）輸入頭部 (start) 的一列標記 (tokens)，得到一些中間結果，然後再遞歸地處理輸入剩下的尾部。
+- 標記樹撕咬機僅有的限制，也是整個宏系統的局限
+  - 只能匹配 `marco_rules!`捕獲到的字面值和語法結構
+  - 無法匹配不成對的標記組(unbalanced group)
+
+#### 標準庫 `ptint!` 宏的定義
+- `$crate` 變量將在std包外被解析為std包，保證整個宏都能調用
+- `format_args!`宏將傳入的參數搭建為 `fmt::Arguments`類型，這個類型將被傳入`_print`函數
+```rust
+#[macro_export]
+macro_rules! print {
+    ($($arg:tt)*) => ($crate::io::_print(format_args!($($arg)*)));
+}
+```
+
+### 重新定義`println!/print!`宏
+- 像標準庫一樣添加 `#[marco_export]`標記，以便在任何地方使用，不過這也會佔用根命名空間(root namespace)，應此我們應該使用`use crate::println`而非`crate::vga_buffer::println`
+- 因為我們`_print`函數為公有的，但考慮到內部有私有的細節，因此添加 `#[doc(hidden)]` 可以讓我們的函數防止他生成在文檔(不被外部訪問看如何實現)
+```rust
+#[macro_export]
+macro_rules! print {
+    ($($arg:tt)*) => ($crate::vga_buffer::_print(format_args!($($arg)*)));
+}
+
+#[macro_export]
+macro_rules! println {
+    () => ($crate::print!("\n"));
+    ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
+}
+
+#[doc(hidden)]
+pub fn _print(args: fmt::Arguments) {
+    use core::fmt::Write;
+    WRITER.lock().write_fmt(args).unwrap();
+}
+```
+
+
+# CPU異常處理
+
+## 簡單介紹
+
+- CPU異常處理信號會在發生錯誤時觸發，並立即依照錯誤類型進行處理
+
+## 錯誤類型
+- Page Fault: 頁錯誤是被非法內存訪問觸發的，例如當前指令試圖訪問未被映射過的頁，或者試圖寫入只讀頁。 Invalid Opcode: 該錯誤是說當前指令操作符無效，比如在不支持SSE的舊式CPU上執行了 SSE 指令。
+- General Protection Fault: 該錯誤的原因有很多，主要原因就是權限異常，即試圖使用用戶態代碼執行核心指令，或是修改配置寄存器的保留字段。
+- Double Fault: 當錯誤發生時，CPU會嘗試調用錯誤處理函數，但如果 在調用錯誤處理函數過程中 再次發生錯誤，CPU就會觸發該錯誤。另外，如果沒有註冊錯誤處理函數也會觸發該錯誤。
+- Triple Fault: 如果CPU調用了對應 Double Fault 異常的處理函數依然沒有成功，該錯誤會被拋出。這是一個致命級別的 三重異常，這意味著我們已經無法捕捉它，對於大多數操作系統而言，此時就應該重置數據並重啓操作系統。
+
+## 中斷向量
+- 中斷和例外是利用一個數字來區分不同的中斷或例外，這個數字稱為「中斷向量」（interrupt vector）。中斷向量是一個由 00H 到 FFH 的數字。其中，00H 到 1FH 的中斷向量是保留作系統用途的，不可任意使用；而其它的中斷向量則可以自由使用
+- 保留的中斷向量如下表所示：
+
+| 向量編號 | 助憶碼 | 說明          | 型態         | 錯誤碼 | 來源                       |
+|------|----|-------------|------------|-----|--------------------------|
+| 00H  | #DE | 除法錯誤        | Fault      | 無   | DIV 和 IDIV 指令。           |
+| 01H  | #DB | 除錯          | Fault/Trap | 無   | 任何對程式或資料的參考、或是 INT 1 指令。 |
+| 02H  | －  | NMI 中斷      | Interrupt  | 無   | 不可遮罩的外部中斷。               |
+| 03H  | #BP | 中斷點         | Trap       | 無   | INT3 指令。                 |
+| 04H  | #OF | 溢出          | Trap       | 無   | INTO 指令。                 |
+| 05H  | #BR | 超出 BOUND 範圍 | Fault      | 無   | BOUND 指令。                |
+| 06H  | #UD | 非法的指令       | Fault      | 無   | UD2 或未定義的指令碼。            |
+| 07H  | #NM | 沒有 FPU      | Fault      | 無   | 浮點運算指令或 WAIT/FWAIT 指令。   |
+| 08H  | #DF | 雙重錯誤        | Fault      | 有   | 任何會產生例外的指令。              |
+| 09H  | －  | 保留          | Fault      | 無   | 386 以後的處理器不產生此例外。        |
+| 0AH  | #TS | 不合法的 TSS    | Fault      | 有   | 工作切換、或存取 TSS。            |
+| 0BH  | #NP | 分段不存在       | Fault      | 有   | 載入或存取分段。                 |
+| 0CH  | #SS | 堆疊分段錯誤      | Fault      | 有   | 載入 SS 載存器或存取堆疊。          |
+| 0DH  | #GP | 一般性錯誤       | Fault      | 有   | 存取記憶體或進行其它保護檢查。          |
+| 0EH  | #PF | 分頁錯誤        | Fault      | 有   | 存取記憶體。                   |
+| 0FH  | －  | 保留          |            |     |                          |
+| 10H  | #MF | 浮點運算錯誤      | Fault      | 無   | 浮點運算指令或 WAIT/FWAIT 指令。   |
+| 11H  | #AC | 對齊檢查        | Fault      | 有   | 存取記憶體。                   |
+| 12H  | #MC | 機器檢查        | Abort      | 無   | 和機器型號有關。                 |
+| 13H~1FH|－|保留
+| 20H~FFH|－|自行使用
+
+## 中斷描述表
+- 在捕捉CPU異常時，會需要使用中斷描述表(Interrupt Description Table,IDT)用來捕獲每一個異常，
+
+| Type | Name                     | Description       |
+|------|--------------------------|-------------------|
+| u16  | Function Pointer [0:15]  | 處理函數地址的低位（最後16位）  |
+| u16  | GDT selector             | 全局描述符表中的代碼段標記。    |
+| u16  | Options                  | （如下所述）            |
+| u16  | Function Pointer [16:31] | 處理函數地址的中位（中間16位）  |
+| u32  | Function Pointer [32:63] | 處理函數地址的高位（剩下的所有位） |
+| u32  | Reserved                 |                   |
+
+| Bits  | Name                             | Description                                   |
+|-------|----------------------------------|-----------------------------------------------|
+| 0-2   | Interrupt Stack Table Index      | 0: 不要切換stack, 1-7: 当處理函數被調用時，切换到中斷stack表的第n層。 |
+| 3-7   | Reserved                         |                                               |
+| 8     | 0: Interrupt Gate, 1: Trap Gate  | 如果該bit被設置為0，當處理函數被調用時，中斷會被禁用。                 |
+| 9-11  | must be one                      |                                               |
+| 12    | must be zero                     |                                               |
+| 13‑14 | Descriptor Privilege Level (DPL) | 執行函數處理所需最小權限                                  |
+| 15    | Present                          |                                               |
+
+- 通常而言，當異常發生時，CPU會執行如下步驟：
+  1. 將一些寄存器數據入棧，包括指令指針以及 RFLAGS 寄存器。
+  2. 讀取中斷描述符表（IDT）的對應條目，比如當發生 page fault 異常時，調用14號條目。
+  3. 判斷該條目確實存在，如果不存在，則觸發 double fault 異常。
+  4. 如果該條目屬於中斷門（interrupt gate，bit 40 被設置為0），則禁用硬件中斷。
+  5. 將 GDT 選擇器載入代碼段寄存器（CS segment）。
+  6. 跳轉執行處理函數。
+
+## 中斷調用約定
+- 調用約定 指定了函數調用的詳細信息，比如可以指定函數的參數存放在哪裡（寄存器，或者棧，或者別的什麼地方）以及如何返回結果。在 x86_64 Linux 中，以下規則適用於C語言函數（指定於 System V ABI 標準）：
+  - 前六個整型參數從寄存器傳入 rdi, rsi, rdx, rcx, r8, r9
+  - 其他參數從棧傳入
+  - 函數返回值存放在 rax 和 rdx
+
+### 保留寄存器
+- 保留寄存器應該在函數調用時保持不變，所以被調用的函數(callee)只有在保證 ***返回之前將這些寄存器的值回復到初始狀態下*** 才允許複寫這個寄存器的值
+  - 在函數開始前將這類寄存器的值存放到棧裡面，並在返回之前回覆到寄存器是最常見的作法
+### 臨時寄存器
+- 被調用的函數可以無限制的複寫入寄存器，如果操作者希望函數處理後寄存器值不變，需要自行處理備份或恢復(例如：存放棧)，因此這類寄存器又被稱caller-saved
+
+#### x86架構下的寄存器分類
+
+| 保留寄存器                             | 臨時寄存器                                     |
+|-----------------------------------|-------------------------------------------|
+| rbp, rbx, rsp, r12, r13, r14, r15 | rax, rcx, rdx, rsi, rdi, r8, r9, r10, r11 |
+| callee-saved                      | caller-saved                              |
+
+## 保存所有寄存器數據
+- 不同於一班函數調用，異常在任何情況都有可能會發生無法預測，因此我們無法預先保留寄存器。所以有了保存所有寄存器的傳統
+- 這並不意味著所有寄存器都會在進入函數時備份入棧。編譯器僅會備份被函數覆寫的寄存器，繼而為只使用幾個寄存器的短小函數生成高效的代碼
+
+## 中斷棧幀
+- 常規函數調用發生時(call 指令)，CPU會在跳轉到目標函數之前，將返回地址入棧(ret 指令)，CPU會在跳回目標函數之前彈出返回地址
+![function stack](../../public/sf.svg)
+
+- 錯誤處理的方式會不一樣，因為牽扯到上下文關係(棧指針,Cpu flags ...)，因此CPU處理如下
+  - 對齊棧指針: 任何指令都有可能觸發中斷，所以棧指針可能是任何值，而部分CPU指令（比如部分SSE指令）需要棧指針16字節邊界對齊，因此CPU會在中斷觸發後立刻為其進行對齊。
+  - 切換棧 （部分情況下）: 當CPU特權等級改變時，例如當一個用戶態程序觸發CPU異常時，會觸發棧切換。該行為也可能被所謂的中斷棧表配置，在特定中斷中觸發
+  - 壓入舊的棧指針: 當中斷發生後，棧指針對齊之前，CPU會將棧指針寄存器（rsp）和棧段寄存器（ss）的數據入棧，由此可在中斷處理函數返回後，恢復上一層的棧指針。
+  - 壓入並更新 RFLAGS 寄存器: RFLAGS 寄存器包含了各式各樣的控制位和狀態位，當中斷發生時，CPU會改變其中的部分數值，並將舊值入棧。
+  - 壓入指令指針: 在跳轉中斷處理函數之前，CPU會將指令指針寄存器（rip）和代碼段寄存器（cs）的數據入棧，此過程與常規函數調用中返回地址入棧類似。
+  - 壓入錯誤碼 （針對部分異常）: 對於部分特定的異常，比如 page faults ，CPU會推入一個錯誤碼用於標記錯誤的成因。
+  - 執行中斷處理函數: CPU會讀取對應IDT條目中描述的中斷處理函數對應的地址和段描述符，將兩者載入 rip 和 cs 以開始運行處理函數。
+![interrupt stack](../../public/isf.svg)
+
+## Rust中的x86-interrupt隱欌行為
+- 傳遞參數: 絕大多數指定參數的調用約定都是期望通過寄存器取得參數的，但事實上這是無法實現的，因為我們不能在備份寄存器數據之前就將其復寫。x86-interrupt 的解決方案時，將參數以指定的偏移量放到棧上。
+- 使用 iretq 返回: 由於中斷棧幀和普通函數調用的棧幀是完全不同的，我們無法通過 ret 指令直接返回，所以此時必須使用 iretq 指令。
+- 處理錯誤碼: 部分異常傳入的錯誤碼會讓錯誤處理更加複雜，它會造成棧指針對齊失效，而且需要在返回之前從棧中彈出去。x86-interrupt 為我們擋住了這些額外的複雜度。但是它無法判斷哪個異常對應哪個處理函數，所以它需要從函數參數數量上推斷一些信息，因此程序員需要為每個異常使用正確的函數類型。而x86_64 crate 中的 InterruptDescriptorTable 已經幫助你完成了定義。
+- 對齊棧: 對於一些指令（尤其是SSE指令）而言，它們需要提前進行16字節邊界對齊操作，通常而言CPU在異常發生之後就會自動完成這一步。但是部分異常會由於傳入錯誤碼而破壞掉本應完成的對齊操作，此時 x86-interrupt 會為我們重新完成對齊。
+
+# RUST實現
+
+## 初始化中斷
+```rust
+// in src/lib.rs
+
+pub mod interrupts;
+
+// in src/interrupts.rs
+
+use x86_64::structures::idt::InterruptDescriptorTable;
+
+pub fn init_idt() {
+    let mut idt = InterruptDescriptorTable::new();
+}
+```
+## 添加中斷處理函數
+- 首先添加breakpoint exception，該異常會在int3指令執行時暫停程序運行
+- breakpoint exception 通常被用在調試器中：當程序員為程序打上斷點，調試器會將對應的位置覆寫為 int3 指令，CPU執行該指令後，就會拋出 breakpoint exception 異常。在調試完畢，需要程序繼續運行時，調試器就會將原指令覆寫回 int3 的位置
+  -  [int3詳細說明](https://eli.thegreenplace.net/2011/01/27/how-debuggers-work-part-2-breakpoints)
+```rust
+// in src/interrupts.rs
+
+use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
+use crate::println;
+
+pub fn init_idt() {
+    let mut idt = InterruptDescriptorTable::new();
+    idt.breakpoint.set_handler_fn(breakpoint_handler);
+}
+
+extern "x86-interrupt" fn breakpoint_handler(
+    stack_frame: InterruptStackFrame)
+{
+    println!("EXCEPTION: BREAKPOINT\n{:#?}", stack_frame);
+}
+```
+- 執行發生錯誤是因為：
+  - 因為x86-interrupt不是穩定特性需要手動啟用，因此需要在 lib.rs 中加入
+    - `#![feature(abi_x86_interrupt)]`
+
+## 載入IDT
+- 可以使用x86_64中InterruptDescriptorTable結構所提供的load函數實現
+```rust
+// in src/interrupts.rs
+
+pub fn init_idt() {
+    let mut idt = InterruptDescriptorTable::new();
+    idt.breakpoint.set_handler_fn(breakpoint_handler);
+    idt.load();
+}
+```
+- 執行再次發生錯誤：
+  - load函數要求生命週期為`&'static self`，也就是這整個程序的生命週期，因為CPU在接收到下個IDT前會一直使用 *這個* 描述表，所以生命週期小於`'static`時，很有可能會發生使用已釋放對象的問題
+    - 目前idt創建在棧上，生命週期指小於init，之後這部分棧的內存會被其他函數調用，CPU再來訪問的話會獲得隨機數據，因此RUST編譯器會組檔這些淺在問題
+    - 如果使用`static mut`的話因為有可能造成數據競爭，因此需要使用unsafe，這會是官方並不推存的代碼習慣
+      - [static 生命週期](https://course.rs/advance/lifetime/static.html)
+      - [rust team 對於unsafe看法](https://foundation.rust-lang.org/news/unsafe-rust-in-the-wild-notes-on-the-current-state-of-unsafe-rust/)
+
+## 使用lazy static避免上述問題
+- lazy_static宏可以讓static變量在第一次取值時獲得值，所以不影響後續的取值
+- 雖然lazy_static內部依然存在unsafe區塊，但已經抽象為了一個安全的接口
+```rust
+use lazy_static::lazy_static;
+
+lazy_static! {
+    static ref IDT: InterruptDescriptorTable = {
+        let mut idt = InterruptDescriptorTable::new();
+        idt.breakpoint.set_handler_fn(breakpoint_handler);
+        idt
+    };
+}
+
+pub fn init_idt() {
+    IDT.load();
+}
+```
+## 執行
+- 在lib中封裝一個init，這樣可以把所有初始化邏輯集中在一個函數，從而讓`main`,`lib`和單元測試共享初始化邏輯
+```rust
+// in src/lib.rs
+
+pub fn init() {
+    interrupts::init_idt();
+}
+```
+### 在main函數中調用init併手動觸發breakpoint
+```rust
+// in src/main.rs
+
+#[no_mangle]
+pub extern "C" fn _start() -> ! {
+    println!("Hello World{}", "!");
+
+    blog_os::init();
+
+    // invoke a breakpoint exception
+    x86_64::instructions::interrupts::int3();
+
+    // as before
+    #[cfg(test)]
+    test_main();
+
+    println!("It did not crash!");
+    loop {}
+}
+```
+
+# 何謂Double Faults
+## 何謂Double Faults
+
+- 當CPU執行錯誤處理函數失敗時拋出的特殊異常，比如沒有註冊在IDT上對應page fault的異常處理函數，而程序卻丟出一個page fault異常，這時候就會接著拋出page fault異常，這個異常處理函數就像一程式語言中的cache
+- double fault的行為我們也可以通過IDT註冊8byte的處理函數來攔截
+- double fault處理函數非常重要，如果不處理這個異常，CPU會直接拋出triple fault異常，triple fault無法被任何方式處理，且會導致大多數硬件強制重啟
+
+## 捕捉Double Faults
+
+### 嘗試觸發未註冊異常且不處理
+- 使用unsafe操作無效地址`0xdeadbeef`，由於該虛擬地址並沒有在page上映射物理位置，必然觸發page fault異常，且我們的IDT還沒有對應的處理器，所以就會接著拋出double fault
+```rust
+#[no_mangle]
+pub extern "C" fn _start() -> ! {
+    println!("Hello World{}", "!");
+
+    blog_os::init();
+
+    // trigger a page fault
+    unsafe {
+        *(0xdeadbeef as *mut u8) = 42;
+    };
+
+    // as before
+    #[cfg(test)]
+    test_main();
+
+    println!("It did not crash!");
+    loop {}
+}
+```
+
+#### 嘗試啟動kernel發現陷入崩潰和無限循環，原因如下
+1. CPU試圖向`0xdeadbeef`寫入數據導致page fault異常
+2. CPU沒有在IDT找到對應處理函數，拋出double fault異常
+3. CPU再一次沒有在IDT上找到對應處理函數，拋出triple fault異常
+4. 由於QEMU面對這個致命級別的異常的處理方式就是重置系統，因此不斷重啟
+
+## 處理 Double Fault
+- 由於double fault是一個帶錯誤碼的常規錯誤，因此可以參考break point定義
+- double fault和break point處理函數最大的差別就是double fault的處理函數為發散，因為`x86_64`架構不允許從double fault異常中返回任何東西
+```rust
+ lazy_static! {
+    static ref IDT: InterruptDescriptorTable = {
+        let mut idt = InterruptDescriptorTable::new();
+        idt.breakpoint.set_handler_fn(breakpoint_handler);
+        idt.double_fault.set_handler_fn(double_fault_handler); // new
+        idt
+    };
+}
+
+// new
+extern "x86-interrupt" fn double_fault_handler(
+    stack_frame: InterruptStackFrame, _error_code: u64) -> !
+{
+    panic!("EXCEPTION: DOUBLE FAULT\n{:#?}", stack_frame);
+}
+```
+
+## Double Faults的成因
+- 但究竟什麼叫 *調用失敗* ？沒有提供處理函數？處理函數被換出內存了？或者處理函數本身也出現了異常？
+- 比如以下情況出現時：
+  1. 如果 breakpoint 異常被觸發，但其對應的處理函數已經被換出內存了？
+  2. 如果 page fault 異常被觸發，但其對應的處理函數已經被換出內存了？
+  3. 如果 divide-by-zero 異常處理函數又觸發了 breakpoint 異常，但 breakpoint 異常處理函數已經被換出內存了？
+  4. 如果我們的內核發生了棧溢出，意外訪問到了 guard page ？
+
+### AMD64手冊中的準確定義定義
+- double fault異常 **會** 再執行主要(一層)異常函數時，處發二層異常時才會觸發
+#### 舉例來說
+    1. Divide-by-zero異常處理函數觸發page fault的會 **不會** 調用double fault異常
+    2. Divide-by-zero異常處理函數觸發 general-protection fault就一定 **會** 觸發double fault異常
+
+| 一层异常                                                                                                            | 二层异常                                                                                                    |
+|-----------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
+| Divide-by-zero,<br/>Invalid TSS,<br/>Segment Not Present,<br/>Stack-Segment Fault,<br/>General Protection Fault | Invalid TSS,<br />Segment Not Present,<br />Stack-Segment Fault,<br />General Protection Fault                |
+| Page Fault	                                                                                                     | Page Fault,<br />Invalid TSS,<br />Segment Not Present,<br />Stack-Segment Fault,<br />General Protection Fault |
+
+- 那麼根據上表，我們可以回答剛剛的假設中的前三個：
+  1. 如果 breakpoint 異常被觸發，但對應的處理函數被換出了內存，page fault 異常就會被觸發，並調用其對應的異常處理函數。
+  2. 如果 page fault 異常被觸發，但對應的處理函數被換出了內存，那麼 double fault 異常就會被觸發，並調用其對應的處理函數。
+  3. 如果 divide-by-zero 異常處理函數又觸發了 breakpoint 異常，但 breakpoint 異常處理函數已經被換出內存了，那麼被觸發的就是 page fault 異常。
+
+- 在IDT裡找不到對應處理函數而拋出異常的機制
+  1. 異常發生時，CPU會試圖讀取對應的IDT條目
+  2. 如果該條目為無效條目，其值為0
+  3. 觸發general protection fault異常
+  4. 但同樣的沒有該異常的處理函數，因此又一個general protection fault被觸發
+  5. 此時滿組double fault異常觸發條件(一層異常觸發二層異常)，因次double fault也被觸發了
+
+## 內存棧溢出
+- guard page 是一類位於棧底部的特殊內存page，所以如果發生溢出，最典型的現象就是會訪問此page，而這類內存page不會映射到物理內存中，所以訪問這裏只會造成page fault異常，不會污染其他內存
+- 當page fault發生時，CPU會在IDT中尋找對應處理函數，並嘗試將中斷棧幀入棧，但此時棧指針指向的是一個不存在的guard page，因此第二層的page fault異常就被觸發，此時滿足double fault觸發條件，double fault也被觸發
+- 此時CPU會嘗試調用double fault對應的處理函數，然而CPU依然會試圖將錯誤棧入棧，由於棧指針依然指向guard，因次第*三*次的page fault發生，最終導致triple fault異常拋出，系統重啟
+
+## 切換棧解決
+- `x86_64`架構允許在異常發生時，將棧切會為一個預先定義的完好棧，因為切換是執行在硬件層次，因此會在CPU將異常棧幀入棧前執行
+- 切換機制由中斷棧表(IST)實現，IST為一個由7個確認可用的完好棧指針組成
+
+```rust
+ struct InterruptStackTable {
+    stack_pointers: [Option<StackPointer>; 7],
+}
+```
+
+- 對於每一個錯誤處理函數，都可以通過對應的IDT條目中的 `stack_pointers` 條目指定IST中的一個棧
+- 比如我們可以讓double fault對應的處理函數使用IST中的第一個棧指針，則CPU會在異常發生時，自動將棧切換為該棧，由於切換行為會在所有入棧操作前執行，因此可以避免觸發triple fault異常
+
+## IST和TSS
+- 中斷棧表(IST)其實是任務狀態段(TSS)的一部分，在`x86_64`的架構下，TSS已經不再像以往儲存任何任務相關訊息，取二代之的是兩個棧表(IST為其中一個，另一個和IO有關)
+  - [TSS](https://en.wikipedia.org/wiki/Task_state_segment)
+
+### 創建TSS
+- 新增gdt模塊，並且使用`x86_64`中crate自帶的TaskStateSegment結構來映射TSS結構體
+  - 這邊取名為gdt的原因是TSS使用到了分段系統，但我們可以在全局描述符表(GDT)添加一段描述符，接著可以通過ltr指令加上gdt序號加載TSS
+- 使用`lazy_static`是因為rust的靜態變量求值器(static ref)無法在編譯器執行初始化代碼
+- 並且將IST的0號位定義為double fault的專屬棧(其他IST序號也可以)
+- 接著將棧的高地址指針(usize)寫入0號位，之所以要這樣是因為`x86_64`的內存分配是由高往低地址分配
+- 由於還沒實現內存管理機制，因此使用`static mut`形式的數組模擬棧儲存區，宣告為可改寫的原因是為了壁面被bootloader分配到只讀頁面，當然unsafe也是必須的，因為編譯器認為這種可以被競爭的變量並不安全
+#### 注意事項
+- 由於double fault獲取的棧不再具有防止棧溢出的guard page(以切換棧)，所以不應該再對任何棧做密集型操作，以免污染到棧下方的內存區預
+```rust
+// in src/lib.rs
+
+pub mod gdt;
+
+// in src/gdt.rs
+
+use x86_64::VirtAddr;
+use x86_64::structures::tss::TaskStateSegment;
+use lazy_static::lazy_static;
+
+pub const DOUBLE_FAULT_IST_INDEX: u16 = 0;
+
+lazy_static! {
+    static ref TSS: TaskStateSegment = {
+        let mut tss = TaskStateSegment::new();
+        tss.interrupt_stack_table[DOUBLE_FAULT_IST_INDEX as usize] = {
+            const STACK_SIZE: usize = 4096 * 5;
+            static mut STACK: [u8; STACK_SIZE] = [0; STACK_SIZE];
+
+            let stack_start = VirtAddr::from_ptr(unsafe { &STACK });
+            let stack_end = stack_start + STACK_SIZE;
+            stack_end
+        };
+        tss
+    };
+}
+```
+
+## 全局描述符表(GDT)
+- GDT包含了程序 *段訊息* 的結構，在舊架構下起到了隔離程序執行環境的作用，而如今已不在64位元模式下運作，但還有兩個功能
+  1. 切換內核空間和用戶空間
+  2. 加載TSS結構
+
+### 創建GDT
+- 依然使用`lazy_static`宏創建TSS和GDT兩個結構
+```rust
+// in src/gdt.rs
+
+use x86_64::structures::gdt::{GlobalDescriptorTable, Descriptor};
+
+lazy_static! {
+    static ref GDT: GlobalDescriptorTable = {
+        let mut gdt = GlobalDescriptorTable::new();
+        gdt.add_entry(Descriptor::kernel_code_segment());
+        gdt.add_entry(Descriptor::tss_segment(&TSS));
+        gdt
+    };
+}
+```
+### 加載GDT
+```rust
+// in src/gdt.rs
+
+pub fn init() {
+    GDT.load();
+}
+
+// in src/lib.rs
+
+pub fn init() {
+    gdt::init();
+    interrupts::init_idt();
+}
+```
+### 激活GDT
+- 由於我們新宣告的GDT並未被激活，且代碼段寄存器和TSS實際上依然引用舊的GDT，並且也要修改double fault對應的IDT條目，使其使用新的棧
+- 因此需要完成以下事情
+  1. 重載代碼段寄存器：由於我們修改了GDT因此就需要重載代碼段寄存器(cs)，這一步對於修改GDT訊息是必須的，例如覆寫TSS
+  2. 加載TSS：由於加載了包含TSS訊息的GDT，因此需要告訴CPU使用新的TSS
+  3. 更新IDT條目：當TSS加載完畢後，CPU就可以訪問到新的中斷棧表(IST)，我們需要通過修改IDT條目告訴CPU使用新的double fault專屬棧
+
+#### 調用`gdt::init`函數中的`code_selector`和`tss_selector`並且打包成`Selectors`結構體使用
+```rust
+// in src/gdt.rs
+
+use x86_64::structures::gdt::SegmentSelector;
+
+lazy_static! {
+    static ref GDT: (GlobalDescriptorTable, Selectors) = {
+        let mut gdt = GlobalDescriptorTable::new();
+        let code_selector = gdt.add_entry(Descriptor::kernel_code_segment());
+        let tss_selector = gdt.add_entry(Descriptor::tss_segment(&TSS));
+        (gdt, Selectors { code_selector, tss_selector })
+    };
+}
+
+struct Selectors {
+    code_selector: SegmentSelector,
+    tss_selector: SegmentSelector,
+}
+```
+#### 使用這輛個變量重載cs和TSS
+- 通過`set_cs`覆寫了cs，然後使用`load_tss`重載tss，這邊使用unsafe是必須的，由於通過這兩個函數加載了無效指針，很可能會破壞掉內存安全性
+```rust
+// in src/gdt.rs
+
+pub fn init() {
+    use x86_64::instructions::tables::load_tss;
+    use x86_64::instructions::segmentation::{CS, Segment};
+
+    GDT.0.load();
+    unsafe {
+        CS::set_reg(GDT.1.code_selector);
+        load_tss(GDT.1.tss_selector);
+    }
+}
+```
+#### 為IDT中的double fault對應的處理函數設置棧序號
+- `set_stack_index`也是unsafe，因為棧序號的有效性和引用唯一性是需要調用者確保的
+```rust
+// in src/interrupts.rs
+
+use crate::gdt;
+
+lazy_static! {
+    static ref IDT: InterruptDescriptorTable = {
+        let mut idt = InterruptDescriptorTable::new();
+        idt.breakpoint.set_handler_fn(breakpoint_handler);
+        unsafe {
+            idt.double_fault.set_handler_fn(double_fault_handler)
+                .set_stack_index(gdt::DOUBLE_FAULT_IST_INDEX); // new
+        }
+
+        idt
+    };
+}
+```

@@ -1,6 +1,6 @@
 ---
-title: rust小技巧 
-description: 記錄一些覺得在rust中很有趣的寫法 
+title: rust小技巧
+description: 記錄一些覺得在rust中很有趣的寫法
 date: 2025-04-15
 tags: ["code", "rust"]
 ---
@@ -67,7 +67,7 @@ pub fn verify(key: String, message: String,code: String,num: i8){
     let mut mac = convert_hmac(key, message, num);
 
     let code_bytes =hex::decode (code).expect("cannot convert string to hex");
-    
+
    match mac.verify_slice(&code_bytes) {
        Ok(()) => println!("Hmac驗證成功!訊息完整且金鑰正確"),
        Err(..) => println!("Hmac驗證失敗!可能訊息被篡改或金鑰不正確"),
