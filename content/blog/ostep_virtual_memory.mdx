@@ -1,0 +1,37 @@
+---
+title: Virtual Memory
+description: Ostep Virtual Memory
+date: 2025-05-16
+tags: ["ostep"]
+---
+
+# The Abstraction: Address Space
+
+## Multiprogramming and Time sharing
+- 為了避免process之間的互相等待,因此從signalprogramming進步到multiprogramming,但在效能提升的同時,如和避免process之間互相干擾成了另一個問題
+
+## Address Space
+- Address space是process的虛擬記憶體,每個process都具備自己的address space
+- process的address space包含運行程序的所有記憶體狀態,比如code必須在記憶體中,因為他們在因為他們在address space裡
+  * 當程式運行時利用stack保存函數調用訊息,分配空間給局部變量
+  * 利用heap管理動態分配的以及用戶管理的記憶體
+
+## 虛擬Memory的目標
+1. transparency: process感知不到memory被虛擬化的事實,反而認為自己擁有自己的private physical memory
+2. efficiency: os追求虛擬化盡可能的effiecnt,包括在時間和空間上.在實現高效率虛擬memory時,os不得不依靠硬體
+3. protection: os應該確保process受到保護不會受到其他process影響,os本身也不會受到任何process影響.當一個prcess執行load,store或指令提取時,不應該用任何方式訪問或影響其他prcess以及os本身的memory
+
+### 你看到所有地址都不是真的
+- 使用C語言打應出來的地址是虛擬地址,並且將由os轉換成物理地址
+```c
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(int argc, char *argv[]) {
+  printf("location of code: %p\n", (void *)main);
+  printf("location of heap: %p\n", (void *)malloc(1));
+  int x = 3;
+  printf("location of stack: %p\n", (void *)&x);
+}
+
+```
