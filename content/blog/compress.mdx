@@ -1,0 +1,238 @@
+---
+title: 壓縮原理算法
+description: 使用C實現壓縮演算法及其原理
+date: 2025-05-20
+tags: ["code", "c"]
+---
+
+
+# RunLength
+- 簡單來說,RunLength想法就是將遍歷數據統整出現次數和該值再重新寫入
+- RunLength 有3種,其中又為第3種最常運用在BMP圖像格式以及PCX等資料格式也會使用這種方法
+  1. 基本的RunLength編碼
+  2. 插入表示RunLength的碼
+  3. 將長度部分作為表示RunLength的碼
+
+![](../../public/runlength.png)
+
+
+## 公用函數
+
+### 讀取準備壓縮文件
+```c
+
+#define BUFFER_SIZE 102400
+
+typedef unsigned char byte;
+
+unsigned char buffer[BUFFER_SIZE];
+
+int main(const int argc, char *argv[])
+{
+  int c;
+  if(argc < 3) {
+    exit(8);
+  }
+
+  FILE *fp_i = fopen(argv[1], "rb");
+  if(fp_i == NULL) {
+    fprintf(stderr, "Input file cannot open \n");
+    exit(8);
+  }
+
+  int i = 0;
+  while(i<BUFFER_SIZE && (c = fgetc(fp_i)) != EOF) {
+    buffer[i] = c;
+    i++;
+  }
+
+  fclose(fp_i);
+  FILE* fp_o = fopen(argv[2], "wb");
+  if(fp_o == NULL) {
+    fprintf(stderr, "Output file cannot open \n");
+    exit(8);
+  }
+  encode(fp_o,buffer,BUFFER_SIZE);
+  fclose(fp_o);
+  return 0;
+}
+```
+
+### 讀取準備解壓縮文件
+
+```c
+int main(int argc,char **argv) {
+    FILE* fp;
+    if ((fp=fopen(argv[1],"rb")) == NULL) {
+        fprintf(stderr,"Can't open file %s\n",argv[1]);
+        exit(1);
+    }
+
+    decode(fp);
+    fclose(fp);
+    return 0;
+}
+```
+
+### 獲得資料長度
+
+```c
+int getRLE(byte *img,int x,int mx,int lim,int *run,int *code) {
+  int px = 0;
+  px = x;
+  *run = 1;
+  *code = img[px];
+  px++;
+  while (px < mx && *code == img[px] && *run < lim) {
+    px++;
+    (*run)++;
+  }
+  return px;
+}
+
+```
+
+## RunLength壓縮算法
+
+### 第一種壓縮
+
+```c
+int encode(FILE *fp,byte *img,int mx) {
+  int run,code;
+  int x = 0;
+
+  while (x < mx) {
+    x = getRLE(img,x,mx,0xff,&run,&code);
+    fputc(run,fp);
+    fputc(code,fp);
+  }
+  return 0;
+}
+
+```
+
+### 第一種解壓縮
+
+```c
+int decode(FILE *fp) {
+    while (!feof(fp)) {
+        int run = fgetc(fp);
+        int code = fgetc(fp);
+        for (int i=0; i<run; i++) {
+            fputc(code,stdout);
+        }
+    }
+    return 0;
+}
+```
+
+### 第二種壓縮
+
+```c
+int encode(FILE *fp,byte *img,int mx) {
+    int run,code;
+    int x = 0;
+    while (x < mx) {
+        x = getRLE(img,x,mx,0xff,&run,&code);
+        if (run < 2) {
+            if (code != 0xff) {
+                fputc(code,fp);
+            }else {
+                fputc(0xff,fp);
+                fputc(0x01,fp);
+                fputc(code,fp);
+            }
+        }else if (run == 2) {
+            if (code != 0xff) {
+                fputc(code,fp);
+                fputc(0xff,fp);
+            }else {
+                fputc(0xff,fp);
+                fputc(0x02,fp);
+                fputc(code,fp);
+            }
+        }else {
+            fputc(0xff,fp);
+            fputc(run,fp);
+            fputc(code,fp);
+        }
+    }
+    return 0;
+}
+```
+
+### 第二種解壓縮
+
+```c
+int decode(FILE *fp) {
+    int c1;
+    int run,code;
+
+    while (!feof(fp)) {
+        c1 = fgetc(fp);
+        if (c1 == EOF) break;
+        if (c1 == 0xff) {
+            run = fgetc(fp);
+            if (run == EOF) break;
+            code = fgetc(fp);
+            if (code == EOF) break;
+            for (int i=0;i<run;i++) {
+                fputc(code,stdout);
+            }
+        }else {
+            fputc(c1,stdout);
+        }
+    }
+    return 0;
+}
+```
+
+### 第三種壓縮
+
+```c
+int encode(FILE *fp,byte *img,int mx) {
+    int run,code;
+    int x = 0;
+    while (x < mx) {
+        x = getRLE(img,x,mx,0x7f,&run,&code);
+        if (run < 2) {
+            if (code < 0x80) {
+                fputc(code,fp);
+            }else {
+                fputc(0x81,fp);
+                fputc(code,fp);
+            }
+        }else {
+            fputc(0x80 | run ,fp);
+            fputc(code,fp);
+        }
+    }
+    return 0;
+}
+
+```
+
+### 第三種解壓縮
+
+```c
+int decode(FILE *fp) {
+    int c1;
+    int run,code;
+
+    while (!feof(fp)) {
+        c1 = fgetc(fp);
+        if (c1 == EOF) break;
+        if (c1 > 0x80) {
+            run = c1 - 0x80; // c1 = run | 0x80
+            code = fgetc(fp);
+            if (code == EOF) break;
+            for (int i=0;i<run;i++) {
+                fputc(code,stdout);
+            }
+        }else {
+            fputc(c1,stdout);
+        }
+    }
+    return 0;
+}
+```
