@@ -6,4 +6,22 @@ tags: ["code","k8s"]
 ---
 
 # Why pod ?
+- 在學習kubernetes的時候,第一個接觸到的componment就是pod,但既然已經有container那為什麼又要需要pod呢
 
+## 為什麼我們需要Pod
+- 由container的觀念不難發現,其實container本質就是process,那既然k8s是由多個container組合而成,就不難將他視為一個os
+- 使用linux 指令下的 `pstree -g=root` 可以發現 process並不是單獨執行,而是有一個組相互協作的
+  ![](../../public/k1.png)
+### 關鍵問題
+- 假測現在k8s上有兩個叢集分邊是node-1 3GB, node-2 2.5GB 現在需要配置3個container
+- 使用Docker Swarm並且設定 `affinity=main` 來模擬在同台機器上執行
+```bash
+docker run main # 需要1GB
+docker run imklog # 需要1GB
+docker run imuxsock # 需要1GB
+```
+- 這三個container都會進入Swarm queue然後main和imklog都先後出隊並調度到node-2上
+- 當imuxsock出隊並開始被調度時,因為node-2上只剩下0.5GB,因此沒辦法執行imuxsock
+  - 但因為設定了 `affinity=main` 因此imuxsock又只能在node-2上執行
+
+* 這就是一個典型的成組調度(gang scheduling)沒有妥善處理的範例
