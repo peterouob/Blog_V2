@@ -112,7 +112,7 @@ docker run --net=b --volumes-from=b --name=a image-a ...
 
 1. 把一個pod裡的volume掛載到應用程式container的/var/log上
 2. 在pod裡執行一個sidcar container,他也宣告同一個volume在自己的/var/log目錄上
-  
+
 - 這樣sidcar container只需要不斷地從自己的/var/log中讀取log轉發到MongoDB or Elasticsearch中儲存即可
 
 ## Pod的本質
