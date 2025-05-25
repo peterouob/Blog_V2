@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tag } from "@/components/Tags";
 import { PostItem } from "@/components/PostItem";
 
-const POST_PRE_PAGE = 6;
+const POST_PRE_PAGE = 5;
 
 interface BlogPageProps {
   searchParams: {

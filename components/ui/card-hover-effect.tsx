@@ -32,7 +32,7 @@ export const HoverEffect = ({slug,title,date,description,tags,className} : Hover
 
         <Card>
           <CardTitle className="text-base md:text-2xl">{title}</CardTitle>
-          <CardDescription className="text-base md:text-lg">{description}</CardDescription>
+          <CardDescription className="text-base md:text-lg ">{description}</CardDescription>
           {tags?.map(tag=><CardTag key={tag}/>)}
 
         </Card>
@@ -51,7 +51,7 @@ export const Card = ({
   return (
     <div
       className={cn(
-        "rounded-2xl h-full w-full lg:p-10 p-2 overflow-hidden bg-gray-800 dark:bg-zinc-400/4 shadow-lg " +
+        "  rounded-2xl h-48 w-56 md:h-60 md:w-64 lg:h-60  lg:w-72 lg:p-10 2xl:w-96 p-2 overflow-hidden bg-gray-800 dark:bg-zinc-400/4 shadow-lg " +
           "border border-transparent dark:border-white/[0.2] group-hover:border-slate-700 relative z-20",
         className
       )}

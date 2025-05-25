@@ -18,7 +18,7 @@ export function Hero() {
                     <CardPost/>
                 </div>
 
-                <div className="flex-[3]">
+                <div className="flex-[2] hidden lg:block">
                     <SideBar />
                 </div>
             </div>

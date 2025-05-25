@@ -21,7 +21,7 @@ export default function RootLayout({
     <html lang="en">
 
       <body
-        className="min-h-dvh scrollbar-hide"
+        className="min-h-dvh scrollbar-hide "
       >
 
     <Providers>

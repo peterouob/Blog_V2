@@ -7,7 +7,7 @@ export function SideBar() {
         <div className="
              flex-col items-center p-7 bg-[#fdfbfb] rounded-lg shadow-md mb-7
             dark:bg-gray-800 dark:text-zinc-50 border border-gray-200 dark:border-gray-700
-            w-full mx-auto max-w-sm hidden md:block md:flex lg:block lg:flex
+            w-full mx-auto max-w-sm flex
         ">
 
             <div className="relative w-48 h-48 mb-6 overflow-hidden rounded-xl shadow-lg">

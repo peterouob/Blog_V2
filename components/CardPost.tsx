@@ -14,9 +14,7 @@ export function CardPost() {
                     {lastPost.map((post, index) => (
                         <div
                             key={post.slug}
-                            className={`min-w-[90%] snap-start ${
-                                index >= 4 ? "hidden md:block" : ""
-                            }`}
+                            className="min-w-[100%] snap-start"
                         >
                             <HoverEffect
                                 slug={post.slug}

@@ -20,7 +20,7 @@ export function Pheader() {
             }}
         >
             <header className="hidden md:block lg:block z-50 sticky top-0 mx-auto w-[60%] border-b border-border bg-background/90
-                    backdrop-blur supports-[backdrop-filter]:bg-background/60 h-[5rem] shadow-lg rounded-b-2xl">
+                    backdrop-blur supports-[backdrop-filter]:bg-background/60 h-[5rem] shadow-lg rounded-b-2xl ">
                 <div
                     className="container mx-auto flex h-full items-center justify-between max-w-screen-2xl">
                     <div className="flex items-center">
@@ -30,7 +30,7 @@ export function Pheader() {
                         </Link>
                     </div>
 
-                    <nav className=" items-center space-x-4 lg:space-x-6 hidden xl:block xl:flex lg:block lg:flex">
+                    <nav className=" items-center space-x-4 lg:space-x-6  flex">
                         <Link href="/" className={cn(
                             "text-xl font-medium transition-colors hover:text-primary",
                             pathname === "/" ? "text-foreground" : "text-foreground/60"
