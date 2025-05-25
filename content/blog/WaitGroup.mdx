@@ -28,8 +28,8 @@ func main(){
 	var wg sync.WaitGroup
 	wg.Add(3) //第一步
 	for i := 0;i<3;i++{
-		go func ()  {	
-			defer wg.Done() //第二步，在goroutine內加上這個調用	
+		go func ()  {
+			defer wg.Done() //第二步，在goroutine內加上這個調用
 			...
 		}()
 	}
@@ -92,7 +92,7 @@ func (wg *WaitGroup) Add(delta int) {
 ```
 
 - `state := wg.state.Add(uint64(delta) << 32) 計數器加delta值`
-- `v := int32(state >> 32) 右移32位，只保留計數器的值` 
+- `v := int32(state >> 32) 右移32位，只保留計數器的值`
 - `w := uint32(state) waiter的數量`
 - `if w != 0 && delta > 0 && v == int32(delta)` 檢查是否還有waiter在等待，如果有不應該再併發調用Add
 - `wg.state.Store(0)` 將計數器的值變為0，準備喚醒waiter

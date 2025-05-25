@@ -11,7 +11,6 @@
     padding: 0;
     box-sizing: border-box;
     min-height: 100vh;
-
   }
   ul,li{
     @apply text-base lg:text-2xl

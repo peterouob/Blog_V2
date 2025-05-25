@@ -1,7 +1,6 @@
 "use client"
 
 import { cn } from "@/lib/utils";
-import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import React, { useState } from "react";
 
@@ -9,11 +8,12 @@ interface HoverEffectProps {
   slug: string,
   title: string,
   date: string,
+  description?: string,
   tags?:Array<string>,
   className?:string
 }
 
-export const HoverEffect = ({slug,title,date,tags,className} : HoverEffectProps) => {
+export const HoverEffect = ({slug,title,date,description,tags,className} : HoverEffectProps) => {
   let [hoveredIndex, setHoveredIndex] = useState<string | null>(null);
   return (
     <div
@@ -32,6 +32,7 @@ export const HoverEffect = ({slug,title,date,tags,className} : HoverEffectProps)
 
         <Card>
           <CardTitle className="text-base md:text-2xl">{title}</CardTitle>
+          <CardDescription className="text-base md:text-lg">{description}</CardDescription>
           {tags?.map(tag=><CardTag key={tag}/>)}
 
         </Card>

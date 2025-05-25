@@ -6,8 +6,8 @@ import { Button } from "./ui/button";
 import {Menu, SunMoon} from "lucide-react";
 import Link, { LinkProps } from "next/link";
 import { useRouter } from "next/navigation";
-import { siteConfig } from "@/config/site";
 import {useTheme} from "next-themes";
+import {siteConfig} from "@/config/site";
 
 export function MobileNav() {
     const [open, setOpen] = useState(false);
@@ -17,7 +17,7 @@ export function MobileNav() {
             <SheetTrigger asChild>
                 <Button
                     variant="outline"
-                    className="top-0 right-0 absolute m-4 w-10 px-0 sm:hidden z-50 bg-gray-400"
+                    className="top-0 right-0 absolute m-4 w-10 px-0 sm:hidden z-50 "
                 >
                     <Menu size={24} />
                 </Button>
@@ -30,6 +30,7 @@ export function MobileNav() {
                 <div className="flex flex-col gap-3 mt-3">
                     <MobileLink onOpenChange={setOpen} href="/blog">Blog</MobileLink>
                     <MobileLink onOpenChange={setOpen} href="/about">About</MobileLink>
+                    <MobileLink onOpenChange={setOpen} href={siteConfig.github}>Github</MobileLink>
                 </div>
             </SheetContent>
         </Sheet>

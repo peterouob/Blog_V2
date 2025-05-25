@@ -4,7 +4,6 @@ import { QueryPagination } from "@/components/QueryPagination";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tag } from "@/components/Tags";
 import { PostItem } from "@/components/PostItem";
-import {AuroraBackgroundPage} from "@/components/AuroraBackgroundDemo";
 
 const POST_PRE_PAGE = 5;
 
@@ -27,8 +26,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
   const sortedTags = sortTagsByCount(tags);
   return (
       <>
-        <AuroraBackgroundPage>
-          <div className="container max-h-screen dark:bg-gray-800 bg-zinc-50 shadow-2xl rounded-xl z-40">
+          <div className="container max-h-screen bg-transparent shadow-2xl rounded-b-2xl z-40">
             <div className="grid grid-cols-1 sm:grid-cols-12 lg:gap-3 lg:mt-8">
               <div className="col-span-12 sm:col-span-12 md:col-span-8 lg:text-xl">
                 {displayPosts.map((post) => {
@@ -64,7 +62,6 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
               </Card>
             </div>
           </div>
-        </AuroraBackgroundPage>
       </>
   );
 }

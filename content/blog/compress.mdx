@@ -236,3 +236,194 @@ int decode(FILE *fp) {
     return 0;
 }
 ```
+
+# 利用資料之分布不均勻來做資料壓縮
+
+## Huffman Tree
+- Huffman Tree本質是利用資料出現的頻率來做壓縮
+
+### 定義結構
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <arm/limits.h>
+
+// data define
+#define BUFFER_SIZE 1024
+#define TRUE 1
+
+// Huffman tree define
+#define N 256
+#define NODATA 2100000000
+#define DEFAULT_MIN (-100)
+#define DEFAULT_CODE_SIZE 100
+
+typedef unsigned char byte;
+
+unsigned char buffer[BUFFER_SIZE];
+```
+
+### 公用函數
+```c
+void encode(FILE *fp,byte *data,int size);
+
+void fputLong(long num, FILE *fp) {
+    fputc((num >> 24) & 0xff,fp);
+    fputc((num >> 16) & 0xff,fp);
+    fputc((num >> 8) & 0xff,fp);
+    fputc((num) & 0xff,fp);
+}
+
+int main(int argc, char **argv) {
+    if (argc < 3) {
+        exit(8);
+    }
+
+    FILE *fp_i = fopen(argv[1],"rb");
+    if (fp_i == NULL) {
+        fprintf(stderr,"Input file cannot open \n");
+        exit(8);
+    }
+
+    int i = 0;
+    int c;
+    while (i < BUFFER_SIZE && (c=fgetc(fp_i)) != EOF) {
+        buffer[i] = c;
+        i++;
+    }
+
+    fclose(fp_i);
+
+    FILE *fp_o = fopen(argv[2],"wb");
+    if (fp_o == NULL) {
+        fprintf(stderr,"Output file cannot open \n");
+        exit(8);
+    }
+    encode(fp_o,buffer,i);
+    fclose(fp_o);
+    return 0;
+}
+
+### 定義Huffman tree結構
+
+```c
+// Huffman tree array
+int l_node[2*N],r_node[2*N];
+int parent[2*N];
+```
+
+```c
+int outputHist(const int *hist,const int nn,FILE *fp) {
+    for (int i=0;i<nn;i++) {
+        fputLong(hist[i],fp);
+    }
+    return TRUE;
+}
+
+void getMin2(const int *hist,const int hm,int *d1,int *d2) {
+    int min1 = INT_MAX, min2 = INT_MAX;
+    *d1 = *d2 = DEFAULT_MIN;
+
+    for (int i=0;i<hm;i++) {
+        if (hist[i] != NODATA && hist[i] < min1) {
+            min1 = hist[i];
+            *d1 = i;
+        }
+    }
+
+    for (int i=0;i<hm;i++) {
+        if (i != *d1 && hist[i] != NODATA && hist[i] < min2) {
+            min2 = hist[i];
+            *d2 = i;
+        }
+    }
+}
+
+int makeTree(int *hist, int n) {
+    int hm_data = n;
+    for (int i=0;i < N*2;i ++) {
+        l_node[i] = r_node[i] = parent[i] = 0;
+    }
+
+    int d1 ,d2;
+    while (TRUE) {
+        getMin2(hist,hm_data,&d1,&d2);
+        if (d1 < 0 || d2 < 0) break;
+        l_node[hm_data] = d1;
+        r_node[hm_data] = d2;
+        parent[d1] = hm_data;
+        parent[d2] = hm_data;
+        hist[hm_data] = hist[d1] + hist[d2];
+        hist[d1] = NODATA;
+        hist[d2] = NODATA;
+        hm_data++;
+    }
+    return hm_data;
+}
+
+static int bits = 0;
+static int bdata = 0;
+
+void fputReset() {
+    bits = 0;
+    bdata = 0;
+}
+
+void fputBit(int bit,FILE *fp) {
+    bdata = (bdata << 1) | bit;
+    bits++;
+    if (bits >= 8 ) {
+        fputc(bdata,fp);
+        fputReset();
+    }
+}
+
+void flushBit(FILE *fp) {
+    if (bits > 0) {
+        while (bits < 8) {
+            bdata <<= 1;
+            bits++;
+        }
+        fputc(bdata,fp);
+        fputReset();
+    }
+}
+
+void outpurEncode(int val,int end,FILE *fp) {
+    int c = 0;
+    int code[DEFAULT_CODE_SIZE];
+
+    int cur = val;
+    // 利用樹的可逆性
+    while (parent[cur] != 0 ) {
+        int p = parent[cur];
+        if (l_node[p] == cur) {
+            code[c++] = 0;
+        }else if (r_node[p] == cur) {
+            code[c++] = 1;
+        }else {
+            fprintf(stderr,"this node is not belong to parent node \n");
+            exit(1);
+        }
+        cur = p;
+    }
+
+    for (int i = c-1;i >= 0;i--) {
+        fputBit(code[i],fp);
+    }
+}
+
+void encode(FILE *fp,byte *data,int size) {
+    int hist[N*2];
+    for (int i=0;i<N*2;i++) hist[i] = 0;
+    for (int i=0;i<size;i++) hist[data[i]]++;
+    fputLong(size,fp);
+    outputHist(hist,N,fp);
+    int datas = makeTree(hist,N);
+    fputReset();
+    for (int i=0;i<size;i++) {
+        outpurEncode(data[i],datas,fp);
+    }
+    flushBit(fp);
+}
+```

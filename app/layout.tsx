@@ -4,8 +4,8 @@ import {Providers} from "@/components/Providers";
 import {SiteFooter} from "@/components/Fotter";
 import {MobileNav} from "@/components/MobileNav";
 import React from "react";
-import {PageHeader} from "@/components/PageHeader";
 import "katex/dist/katex.min.css";
+import {Pheader} from "@/components/Pheader";
 
 export const metadata: Metadata = {
   title: "Blog",
@@ -26,9 +26,8 @@ export default function RootLayout({
 
     <Providers>
         <MobileNav/>
-
-        <div>
-            <PageHeader />
+        <Pheader />
+        <div className="flex-grow">
             <main>
                 {children}
             </main>

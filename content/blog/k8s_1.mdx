@@ -67,7 +67,7 @@ docker run --net=b --volumes-from=b --name=a image-a ...
 	2. 不管WAR包,擁有只發佈一個Tomcat container,不過webapps目錄必須宣告一個hostPath類型的Volume,讓素主機上的WAR包掛載進Tomcat下執行
 		- 如何讓每台宿主機都預先準備好儲存WAR包的目錄
 - 使用Pod的話問題就好解決,可以把WAR和Tomcat分別做成image然後用Pod組合
-	```yaml
+```yaml
 	apiVVersion: v1
 	kind: Pod
 	metadata:
@@ -93,12 +93,12 @@ docker run --net=b --volumes-from=b --name=a image-a ...
     volumes:
     - name: app-volume
       emptyDir: {}
-	```
+```
 
 - 在這pod中定義了兩個container,第一個只有WAR包放在跟目錄,第二個則是標準Tomcat
 - WAR包在這邊並非普通的container,而是一個initContainers,在pod中initContainers定義的容器會比spec.containers定義的使用者容器先啟動,並且initContainers容器會和順序逐一啟動,而使用者容器會等initContainers都啟動並且退出才啟動(保證了使用者容器不會遇到依賴容器還沒啟動就啟動的問題,類似docker container的deps)
 
-#### 執行pod流程
+### 執行pod流程
 1. initContainers類型的WAR包容器啟動後,將application複製到/app目錄下後退出,因此/app目錄就掛載了一個叫app-volume的Volume
 2. Tomcat也同樣宣告了app-volume到自己的webapps目錄下
 3. 等Tomcat啟動時,他的webapps目錄下就一定存在sample.war檔案,這檔案是WAR container啟動時複製到這個Volume的,而這一個Volume被兩個container共享
@@ -123,3 +123,6 @@ docker run --net=b --volumes-from=b --name=a image-a ...
 3. 把process想成container image,並將具有順序性的定義成為Init Container
 
 - 藉由上述的方法可以避免強行將應用程式塞入container中,甚至使用docker-in-docker的方法
+
+# 深入理解pod
+
