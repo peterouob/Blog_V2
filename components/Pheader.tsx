@@ -1,29 +1,24 @@
 "use client";
-import React from "react";
 import Link from "next/link";
 import { siteConfig } from "@/config/site";
 import { cn } from "@/lib/utils";
 import ThemeToggle from "@/components/Toggle";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
-import {useTheme} from "next-themes"; // 導入 motion
 
 export function Pheader() {
     const pathname = usePathname();
-    const { theme } = useTheme();
-
-    const overlayColor =
-        theme === "light" ? "rgba(0, 0, 0, 0)" : "rgba(0, 0, 0, 0.5)";
     return (
         <div
             className={cn(
                 "relative bg-cover bg-center shadow-lg",
-                pathname === "/" ? "2xl:h-[85rem] lg:h-[60rem] h-[40rem]" : " 2xl:h-[35rem] lg:h-[25rem] h-[20rem]"
+                pathname === "/" ? "2xl:h-[85rem] lg:h-[60rem] h-[40rem]" : " 2xl:h-[35rem] lg:h-[25rem] h-[20rem]",
+                "bg-transparent dark:bg-black/50"
             )}
             style={{
                 backgroundImage: `url('/blogbg.png')`,
                 backgroundBlendMode: 'multiply',
-                backgroundColor: overlayColor
+
             }}
         >
             <header className="hidden md:block lg:block z-50 sticky top-0 mx-auto w-[60%] border-b border-border bg-background/90
