@@ -18,7 +18,7 @@ export function Pheader() {
         <div
             className={cn(
                 "relative bg-cover bg-center shadow-lg rounded-b-2xl ",
-                pathname === "/" ? "lg:h-[85rem] h-[65rem]" : "lg:h-[25rem] h-[30rem]"
+                pathname === "/" ? "2xl:h-[85rem] lg:h-[60rem] h-[40rem]" : " 2xl:h-[35rem] lg:h-[25rem] h-[20rem]"
             )}
             style={{
                 backgroundImage: `url('/blogbg.png')`,
