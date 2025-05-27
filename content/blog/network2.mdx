@@ -1,0 +1,312 @@
+---
+title: Network security 筆記
+description: 上課筆記整理
+date: 2025-05-27
+tags: ["note"]
+---
+
+第 8 章 防火牆 (Firewalls)
+1. 防火牆基本概念
+* 目的: 控制網路存取,阻絕所有不允許放行的流量
+* 功能: 可依據服務、來源/目標IP位址、使用者識別碼等進行流量過濾
+* 構成: 通常由一組軟硬體組成,包含主機、作業系統及防火牆應用軟體
+* 位置: 一般建置於網際網路與內部網路之間
+* 原理: 利用預先設定的規則,對遠端連接的封包進行檢查,符合則通過,否則阻止
+* 作用: 過濾、過濾再過濾
+
+
+
+2. 防火牆控制的內容
+* Service control: 決定網際網路服務的類型 (進/出)
+* Direction control: 決定服務允許流經的方向
+* User control: 決定哪些使用者被允許存取
+* Behavior control: 控制服務如何被使用
+
+3. 防火牆做不到的事
+* 無法防止防火牆自己內部的不法行為
+* 無法管理不經過防火牆的連線
+* 無法防範全新的威脅
+* 無法防範病毒
+
+4. 防火牆的組成架構分類
+* 硬體防火牆:
+* 使用量身定制的硬體 (ASIC) 和作業系統 (如 Netscreen ScreenOS)
+* 強調高效能、實用性、處理速度
+* 軟體防火牆:
+* 使用通用 PC 硬體和 Unix/Windows 系列作業系統 (如 Checkpoint)
+* 設定較彈性,可自行微調,近代作業系統多有內建
+* 運作平台 (Appliance):
+* 提供最佳化過的硬體平台 (模組化設計),運作專屬作業系統 (如 Crossbeam XOS)
+* 注意: 硬體防火牆內部仍靠軟體運作
+
+
+5. 防火牆的歷史 (技術) 發展
+* 第一代: 封包過濾防火牆 (Packet Filter)
+* 針對 IP 封包的表頭欄位與規則進行過濾 (Network Layer)
+* 第二代: 電路層代理 (Circuit-level Proxy)
+* 在 Session 層建立兩邊的 TCP 連線 (如 SOCKS)
+* 第三代: 應用層代理 (Application-layer Proxy)
+* 在應用層建立兩邊的 TCP 連線 (如 Squid)
+* 第四代前身: 動態封包過濾 (Dynamic/Stateful Packet Filter)
+* 具備 keep state 能力,只讓屬於正常且已記錄的連線封包進入
+* 例如:WINXP ICF, Linux iptables, BSD ipfilter
+* 運作於 OSI 網路層,但有動態狀態表
+* 第四代: 狀態檢測 (Stateful Inspection)
+* 例如:Checkpoint FireWall-1, Cisco PIX, Netscreen
+* 運作於 OSI 網路層,但有動態狀態表,檢查範圍更廣
+
+
+
+
+
+6. 進階封包過濾
+* 能重組封包,對內容進行辨識與處理 (content security)
+* 能分辨不同協定內容 (WWW, email),配合網路防毒,過濾網頁內容
+* 缺點: 需強大硬體效能及昂貴軟體
+
+7. 防火牆的運作模式
+* Routing Mode:
+* 防火牆扮演 Router 角色,或 Router 設定封包過濾規則
+* 設定複雜,初期建構好後不易更動,古典模式 (如 Cisco Router ACL)
+* NAT Mode:
+* 防火牆兼具 NAT Server 功能,內部網路使用 Private IP
+* 外部存取內部需設定對映/轉址規則,目前最常見,通常有 stateful 能力
+* Bridging Mode (Transparent Firewall):
+* 防火牆以 Bridge 方式運作,可不需 IP (也可設 IP 管理,但增風險)
+* 對原有網路架構影響極小,支援此模式的防火牆較少 (如 Netscreen)
+* 個人單機防火牆:
+* 安裝於個人作業系統,以防禦主機本身為主
+* 限制 IP、PORT 存取,或結合小型入侵偵測系統
+
+
+
+
+
+8. OS 內建的封包過濾
+* Linux:
+* 2.2 kernel 以前: ipchain
+* 2.4 kernel 以後: iptables (netfilter) 核心支援,可作單機/網路防火牆/NAT,有圖形化工具
+* BSD:
+* 主要為 ipfilter (FreeBSD 預設 ipfw) 核心支援,可 router, bridge, NAT 等模式,功能完整
+
+
+9. iptables 簡介 (Linux)
+* Tables (模組): filter, nat, mangle
+* filter table chains:
+* INPUT: 目的地是本機的封包
+* OUTPUT: 從本機出去的封包
+* FORWARD: 只是經過本機的封包
+* nat table chains:
+* PREROUTING: 收到封包後,路由判斷前 (DNAT)所有收到的封包,包括傳給自己或經過本機路由所收到的封包
+* POSTROUTING: 送出封包前 (SNAT)所有從本機出去,包括自己傳送出去或經過本機路由轉送出去的封包
+* OUTPUT: 本機產生的封包,路由判斷前 (DNAT for local processes)從本機傳送出去的封包
+* mangle table chains: PREROUTING, OUTPUT (修改封包資訊)  (也包含 INPUT, FORWARD, POSTROUTING,見圖 )
+* iptables 架構圖:  (顯示封包流程與各 table/chain 的處理點)
+
+10. iptables常用指令參數 (General):
+* -L: 列出規則
+* -A: 附加規則到鏈的最後
+* -D: 從鏈中刪除規則
+* -I: 在鏈的最前面插入規則
+* -F: 清除規則
+* -P: 設定鏈的預設政策 (policy)
+* -N: 自訂新鏈
+* -X: 移除自訂的鏈
+* -t `<table>`: 指定表格 (e.g., filter, nat, mangle)
+* -n: 不要將 IP 反查為網域名稱
+
+11. iptables常用匹配參數 (Matching):
+* -p `<protocol>`: 指定協定 (e.g., tcp, udp, icmp)
+* -s `<source_ip>`: 指定來源 IP/網路
+* -d `<destination_ip>`: 指定目的 IP/網路
+* -i `<interface>`: 指定封包進入的網路介面
+* -o `<interface>`: 指定封包出去的網路介面
+* --sport `<port>`: 指定來源埠號
+* --dport `<port>`: 指定目的埠號
+* --icmp-type `<type>`: 指定 ICMP 類型 (e.g., echo-request)
+* 常用目標動作 (Target):
+* -j ACCEPT: 允許封包通過
+* -j REJECT: 丟棄封包並回應錯誤訊息
+* -j DROP: 丟棄封包不回應
+* -j MASQUERADE: 用於 SNAT,通常在 POSTROUTING chain,自動使用外出介面的 IP
+* -j DNAT --to `<destination_ip:port>`: 用於 DNAT,通常在 PREROUTING chain
+* -j SNAT --to-source `<source_ip>`: 用於 SNAT,通常在 POSTROUTING chain
+* iptables 儲存與還原:
+* 儲存: # `iptables-save > /path/to/file`
+* 還原: # `iptables-restore < /path/to/file`
+* iptables 啟動管理:
+* 開機自動啟動: # `chkconfig iptables on`
+* 手動啟動/關閉/重啟: # `/etc/init.d/iptables start|stop|restart`
+
+
+
+第 9 章 虛擬私有網路 (VPN)
+1. VPN 基本概念
+* 定義: 虛擬私有網路 (Virtual Private Network),是私人網路的延伸,可透過 Internet 利用加密通道傳送資料,模擬點對點連線特性
+* 目的: 解決傳統專有線路費用高昂的問題,透過網際網路建立專屬通道 (tunnel)
+* 特性: 封裝後資料標頭加入路由資訊,通道內資料已加密
+
+
+2. VPN 類型
+* Intranet VPN: 連接同一組織內不同點的內部網路
+* Remote Access VPN: 允許遠端使用者存取公司內部網路
+* Site-to-Site VPN: 連接不同地點的網路 (如總公司與分公司)
+
+
+
+
+
+3. 為何需要 VPN?
+* 透過 Internet 經由加密 VPN 通道,存取內部網路資源
+* 公司與分公司間,利用 Site-to-Site VPN 節省電路費
+* 公司內部存取內部重要資訊
+
+4. VPN 解決方案要素
+* 使用者驗證 (User Authentication)
+* 位置管理 (Address Management)
+* 資料加密 (Data Encryption)
+* 金鑰管理 (Key Management)
+
+5. VPN 通道技術 (Tunneling Protocols)
+* 通道 (Tunnel): 使用中間網路基礎架構的方法,被傳送資料 (payload) 的檔頭 (header) 已重新封裝 (encapsulate),提供路由資訊
+* PPTP (Point-to-Point Tunneling Protocol):
+* 在 IP 資料段中封裝 PPP 框架
+* 使用 TCP 連線作為通道管理
+* 利用 GRE (Generic Routing Encapsulation) 來封裝 PPP 框架
+* PPP Payload 被 PPP Header, GRE Header, IP Header 依序封裝
+* L2TP (Layer Two Tunneling Protocol):
+* 由 Cisco 提出,是 PPTP + L2F (Layer 2 Forwarding)
+* 使用 UDP 連線作為通道管理
+* L2TP 封裝 PPP 框架,可透過 IP/X.25/Frame relay/ATM 網路傳送
+* PPP Payload 被 PPP Header, L2TP Header, UDP Header, IP Header 依序封裝
+* L2TP/IPSec:
+* 微軟的 L2TP 使用 IPSec ESP (Encapsulating Security Payload) 來加密 L2TP 的資料
+* 擁有 PPTP 功能,也提供 IPSec 安全性與控制性
+* PPP Payload 被 PPP Hdr, L2TP Hdr, UDP Hdr, IPSec ESP Hdr, IP Hdr 依序封裝,並有 ESP Trailer 及 Auth Header
+
+
+
+
+
+6. PPTP 與 L2TP/IPsec 比較
+* PPTP:
+* 加密金鑰由使用者驗證程序的密碼產生雜湊 (hash)
+* 資料加密在 PPP 連線程序中
+* 易受字典攻擊
+* 使用 MPPE (Microsoft 點對點加密),以 RSA RC4 加密演算法與 40/56/128 位元金鑰為基礎
+* 只需使用者層級驗證
+* L2TP/IPsec:
+* 透過憑證在取得密碼前便設定加密通道
+* 資料加密在 PPP 連線程序之前
+* 需要憑證或是預先共用金鑰 (preshared secret key)
+* 使用 56 位元的 DES 或是 3DES 做為加密基礎
+* 需使用者層級與憑證的電腦層級驗證
+
+
+7. VPN 安全性
+* 驗證安全性:
+* 認證採用使用者名稱與密碼,或憑證形式
+* PAP (Plain text Authentication Protocol): 純文字密碼,易被破解
+* CHAP (Challenge-Handshake Authentication Protocol): 加密驗證機制,避免實際密碼傳輸,使用 MD5 加密回應
+* MS-CHAP (Microsoft CHAP): 類似 CHAP,使用 MD4MS-CHAP v2 提供相互驗證
+* EAP (Extensible Authentication Protocol): 任意驗證方法 (Smart Card, Token Cards, 指紋等)
+* 授權安全性: 連接限制、群組原則
+* 加密安全性: 加密演算法、連線加密過程
+* 封包過濾: 過濾不必要的封包
+
+
+
+
+
+8. 特定協定連接的安全驗證
+* PPTP 連接: 加密使用 MPPE,產生 MPPE 金鑰需 MS-CHAP/MS-CHAPv2/EAP-TLS
+* L2TP/IPSec 連接:
+* IPSec 電腦驗證: VPN 用戶端與伺服器相互電腦驗證,建立 IPSec ESP SA (Security Association)
+* L2TP 使用者層級驗證: IPSec 通道建立完成後,在加密模式下,使用者以 PPP 為基礎的認證協定建立 L2TP 連線
+
+
+第 10 章 IP 安全機制 (IPSec)
+1. IPSec 簡介
+* 定義: IP Security,由 IETF 定義,主要目的在 TCP/IP 網路層 (OSI 第三層) 提供端點對端點的安全通訊保密機制
+* 優點: 使用者電腦不需更動即可提供傳輸時的安全性
+* 安全服務: 驗證 (Authentication)、保密 (Confidentiality)、完整 (Integrity)、存取控制 (Access Control)  (來源  提到在標頭檔中提供鑑別性訊息；提供鑑別性並將資料進行加密)
+* 適用性: 符合 IPv4 環境,也是 IPv6 的標準 PPTP/L2TP 為第二層穿隧技術
+
+
+
+
+2. IPSec 架構與運作
+* OSI 模型位置: 網路層 (IP 層)
+* IPSec 運作步驟:
+1.  初始化: 對如何使用 IPSec 達成共識 (選擇安全功能、加密演算法、金鑰原則等)
+2.  金鑰交換: 利用非對稱加密法,讓二端點各自擁有相同的祕鑰 (如 IKE)
+* 安全聯結 (Security Association, SA): 定義聯結的相關訊息參數 (SPI, 安全協定 ID, IP 目的位址)
+* 金鑰交換協定: 主要為 ISAKMP/Oakley/IKE (Internet Key Exchange)
+
+
+
+
+3. IPSec 的協定
+* AH (Authentication Header) (IP Protocol 51, 文件中為 33 )
+* 功能: 提供封包鑑別、確保 IP 封包完整性 (未遭篡改)、確認 IP 封包發送者身份 不提供加密
+* 驗證範圍: 包含部分 IP 標頭
+* 封包格式: Next Header, Payload Len, RESERVED, Security Parameters Index (SPI), Sequence Number Field, Authentication Data (ICV)
+* 演算法: HMAC-MD5-96, HMAC-SHA-1-96  (HMAC 原理見 )
+* ESP (Encapsulating Security Payload) (IP Protocol 50, 文件中為 32 )
+* 功能: 主要提供加密功能,可選擇性加上認證鑑別功能
+* 驗證範圍 (若啟用): 不包含外部 IP 標頭
+* 封包格式: Security Parameters Index (SPI), Sequence Number, Payload Data (加密), Padding, Pad Length, Next Header, Authentication Data (ICV, 若啟用)
+* 加密演算法: AES, 3DES/DES, RC5, IDEA/3IDEA
+* 雜湊演算法 (認證用): SHA1, MD5
+
+
+
+
+
+4. IPSec 的使用模式
+* 傳輸模式 (Transport Mode):
+* 僅加密或認證上層協定的資料 (IP Payload)
+* 原始 IP 標頭保留,IPSec 標頭插入在原始 IP 標頭和上層協定之間
+* AH 傳輸模式: 原始IP | AH | IP Payload
+* ESP 傳輸模式: 原始IP | ESP標頭 | [IP Payload | ESP Trailer]加密 | ESP認證
+* 通常用於主機對主機 (end-to-end) 的安全
+* 通道模式 (Tunnel Mode):
+* IPSec 會加密或認證整個原始 IP 封包,並在最外面再加上一個新的 IP 標頭
+* AH 通道模式: 新IP | AH | 原始IP | IP Payload
+* ESP 通道模式: 新IP | ESP標頭 | [原始IP | IP Payload | ESP Trailer]加密 | ESP認證
+* 常用於閘道對閘道 (VPN) 或主機對閘道
+
+
+
+
+
+5. AH 及 ESP 的結合使用 (範例為先加密再認證,AH 在 ESP 之外)
+* 傳輸模式: 原始IP | AH | ESP標頭 | [IP Payload | ESP Trailer]加密  (ESP 認證欄位通常會包含 ESP 標頭與加密內容)
+* 隧道模式: 新IP | AH | ESP標頭 | [原始IP | IP Payload | ESP Trailer]加密
+* 另一種組合 (先認證再加密,AH 在 ESP 之內,被 ESP 加密):
+* 隧道模式: 新IP | ESP標頭 | [AH | 原始IP | IP Payload | ESP Trailer]加密
+
+
+
+
+
+6. IPSec 的應用
+1.  建立區域網路內部的安全通訊
+2.  區域網路之間透過網際網路在安全環境下傳輸資料 (VPN)
+3.  個人電腦經由網際網路連線至區域網路做遠端存取
+
+7. IPSec 的限制
+* 支援之通訊協定較少 (主要 IP)
+* 需安裝設定用戶端軟體、可攜性較低
+* 遠端用戶如位於防火牆後方則防火牆需特別設定 (NAT Traversal 問題)
+* 無法辨識用戶端的真正使用者 (通常基於 IP)
+* 不同廠家之軟體間相容性可能較低
+* 在 NAT 環境下運作受限
+
+8. IPSec 在 NAT 環境下的運作
+* 先 IPsec 再 NAT: 私有網路中的主機發出 IPsec 封包,經過 NAT 設備時,NAT 設備修改 IP 標頭這會導致 AH 完整性檢查失敗 (因 IP 標頭改變),ESP 完整性檢查也可能失敗 (若包含 IP 標頭)
+* IPsec-AH + NAT: 通常失敗
+* IPsec-ESP-Transport + NAT: 可能有問題
+* IPsec-ESP-Tunnel + NAT: 外部標頭被 NAT 修改,內部標頭受保護,較有機會成功,但仍需 NAT-Traversal (NAT-T) 技術
+* 先 NAT 再 IPsec: 封包先經過 NAT 轉換 Source IP/Port,然後再進行 IPsec 加密封裝IPsec 不受 NAT 影響,但 IPsec 設備可能無法得知 NAT 後方真正的封包來源 IP
+* NAT-Traversal (NAT-T): 一種解決方案,通常是將 ESP 封包封裝在 UDP 之中 (常見 port 4500),讓 NAT 設備可以處理IKE 協商也使用 UDP (port 500)
