@@ -22,7 +22,7 @@ export function PostItem({
   return (
     <article className="flex flex-col gap-2 border-border border-b lg:p-3 md:p-3 pt-1 ">
       <div>
-        <h2 className="xl:text-3xl text-xl font-bold">
+        <h2 className="xl:text-3xl text-xl font-bold mt-2">
           <Link href={"/" + slug}>{title}</Link>
         </h2>
       </div>
