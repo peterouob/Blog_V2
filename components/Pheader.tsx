@@ -58,24 +58,28 @@ export function Pheader() {
                     </div>
                 </div>
             </header>
-            <div className="absolute inset-0 flex flex-col justify-center items-center text-center text-white px-4">
-                <motion.h1
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8 }}
-                    className="lg:text-6xl md:text-4xl text-2xl font-bold mb-4"
-                >
-                    Welcome to My Blog
-                </motion.h1>
-                <motion.p
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8, delay: 0.2 }}
-                    className="text-lg max-w-2xl lg:text-2xl"
-                >
-                    紀錄 | 享受
-                </motion.p>
-            </div>
+            {pathname === "/" && (
+                <div className={cn(
+                    "absolute inset-0 flex flex-col justify-center items-center text-center text-white px-4")
+                }>
+                    <motion.h1
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.8 }}
+                        className="lg:text-6xl md:text-4xl text-2xl font-bold mb-4"
+                    >
+                        Welcome to My Blog
+                    </motion.h1>
+                    <motion.p
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.8, delay: 0.2 }}
+                        className="text-lg max-w-2xl lg:text-2xl"
+                    >
+                        紀錄 | 享受
+                    </motion.p>
+                </div>
+            )}
         </div>
     );
 }
