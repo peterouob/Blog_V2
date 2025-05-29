@@ -1,0 +1,292 @@
+---
+title: Free List
+description: 實現dynamic memory translation中提到的free list
+date: 2025-05-29
+tags: ["os","code"]
+---
+
+# Free List
+## 參考
+[可利用空间表（Free List)](https://songlee24.github.io/2015/04/08/free-list/)
+
+- 當用戶請求分配時,系統從freeList中刪除一個node並且分配
+- 當用戶釋放時,系統將被釋放的node重新添加到freeList中
+
+# Free List 結構
+1. 節點大小相同
+- 把Memory存為大小相同的若干節點,需要時從頭部摘取,釋放時將節點添加到freeList的頭部
+2. 節點有不同的固定大小
+- 用戶所需Memory大小不同但只允許在固定規格下選取,讓freeList維護相同空間大小的node即可,即為同一鏈錶中的node大小相同
+- 假設有2,4,8 Byte 三個不同大小的node時,可以構造3個鏈錶
+3. 節點大小不同
+- Memory塊大小不固定且只有一個LinkList,通常os都屬於這種Free List,隨著分配和回收的進行,Free List的節點大小和個數也會跟著變化
+- 由於節點大小不同,在分配時並不是Free List任一節點都能滿足,需要按照以下策略
+  1. 首次適應法: 從鏈錶頭指針開始找,找到 $\text{所需空間} \leq \text{節點大小}$ 即可分配 (分配時查詢,釋放時插入表頭)
+    - 首次適應法的速度最快,但容易導致空間碎片化,因為可能將較大的塊分配給較小的塊,適合用在適合用在os事先並不知道運行期間可能出現的請求分配和釋放情況
+  2. 最佳適應法: 要求節點從小排到大,找到第一個 $\text{所需空間} \leq \text{節點大小}$ 即可分配 (分配和回收都需要查詢)
+    - 最佳適應法的優點是將無法滿足大請求塊的可能性降到最低,但可能導致嚴重的外部碎片,適合請求分配Memory大小較廣的系統
+  3. 最差適應法: 要求節點從大排到小,從第一個節點開始分配(分配時不需要,回收時查詢)
+    - 最差適應法優點是使得空閑塊長度趨近一治,適合分配請求較均勻的系統
+## 一個最簡單的範例
+- 如果 getFromFreeList 內部直接 free(allocatedBlock)，那麼呼叫者會得到一個指向已被釋放記憶體的懸置指標 (dangling pointer)
+- 這邊的範例是對於每一塊請求Memory都相同大小的時候,且存在race condition風險
+```c
+#include <stdlib.h>
+#include <stdio.h>
+
+typedef struct MemoryBlock_ {
+    unsigned int id;
+    struct MemoryBlock_ *next;
+}MemoryBlock;
+
+typedef struct FreeList_ {
+    MemoryBlock *head;
+    unsigned int size;
+}FreeList;
+
+FreeList *newFreeList() {
+    FreeList *freeList = (FreeList *)malloc(sizeof(FreeList));
+    if (freeList == NULL) {
+        fprintf(stderr, "Failed to allocate memory for freeList \n");
+        exit(1);
+    }
+
+    freeList -> head = NULL;
+    freeList -> size = 0;
+    printf("FreeList success initialize \n");
+    return freeList;
+}
+
+void addToFreeList(FreeList *freeList, unsigned int blockId) {
+    if (freeList == NULL) {
+        fprintf(stderr, "FreeList is not initialize \n");
+        exit(1);
+    }
+
+    MemoryBlock *newBlock = (MemoryBlock *)malloc(sizeof(MemoryBlock));
+    if (newBlock == NULL) {
+        fprintf(stderr, "Failed to allocate memory for memory block \n");
+        exit(1);
+    }
+
+    newBlock -> id = blockId;
+    newBlock -> next = freeList->head;
+    freeList -> head = newBlock;
+    freeList -> size++;
+    printf("Block %u added to free list \n",blockId);
+}
+
+MemoryBlock* getFromFreeList(FreeList *freeList) {
+    if (freeList == NULL) {
+        fprintf(stderr, "FreeList is not initialize \n");
+        exit(1);
+    }
+
+    if (freeList->head == NULL) {
+        fprintf(stderr, "FreeList is empty \n");
+        exit(1);
+    }
+
+    MemoryBlock *allocatedBlock = freeList -> head;
+    freeList ->head = freeList ->head->next;
+    allocatedBlock -> next = NULL;
+    freeList ->size --;
+    printf("Block %u removed from free list \n",allocatedBlock -> id);
+    return allocatedBlock;
+}
+
+int freeListIsEmpty(const FreeList *freeList) {
+    if (freeList == NULL) {
+        fprintf(stderr, "FreeList is not initialize \n");
+        exit(1);
+    }
+    return freeList->head == NULL;
+}
+
+unsigned int freeListSize(const FreeList *freeList) {
+    if (freeList == NULL) {
+        fprintf(stderr, "FreeList is not initialize \n");
+        exit(1);
+    }
+    return freeList -> size;
+}
+
+void printBlock(const FreeList *freeList) {
+    if (freeList == NULL) {
+        fprintf(stderr, "FreeList is not initialize \n");
+        exit(1);
+    }
+
+    if (freeList->head == NULL) {
+        fprintf(stderr, "FreeList is empty \n");
+        exit(1);
+    }
+
+    printf("FreeList contents (size: %u): \n",freeList->size);
+    const MemoryBlock* block = freeList -> head;
+
+    while (block != NULL) {
+        printf("Block ID: %u\n",block->id);
+        block = block->next;
+    }
+}
+
+void destroyFeeList(FreeList *freeList) {
+    if (freeList == NULL) {
+        fprintf(stderr, "FreeList is not initialize \n");
+        exit(1);
+    }
+
+    if (freeList->head == NULL) {
+        printf("FreeList is empty \n");
+        free(freeList);
+        return;
+    }
+
+    MemoryBlock *block = freeList -> head;
+
+    if (freeList->size == 1) {
+        printf("FreeList size is one \n");
+        free(block);
+        free(freeList);
+        return ;
+    }
+
+    while (block != NULL) {
+        MemoryBlock *nextBlock = block->next;
+        printf("Free Block id =%u \n",block->id);
+        free(block);
+        block = nextBlock;
+    }
+    free(freeList);
+    printf("FreeList success destroying \n");
+}
+
+int main() {
+    FreeList *freeList = newFreeList();
+    addToFreeList(freeList, 10);
+    addToFreeList(freeList, 20);
+    addToFreeList(freeList, 30);
+    addToFreeList(freeList, 40);
+
+    printBlock(freeList);
+
+    printf("--- Allocating blocks ---\n");
+    MemoryBlock *block1 = getFromFreeList(freeList);
+    if (block1 != NULL) {
+        printf("Allocated block ID: %u. (Simulate mapping to a virtual page)\n", block1->id);
+        free(block1);
+    }
+
+    MemoryBlock *block2 = getFromFreeList(freeList);
+    if (block2 != NULL) {
+        printf("Allocated block ID: %u. (Simulate mapping to another virtual page)\n", block2->id);
+        free(block2);
+    }
+
+    addToFreeList(freeList, 201);
+
+    printBlock(freeList);
+    printf("Free list size: %p\n\n", getFromFreeList(freeList));
+
+    printf("--- Destroy Free List --- \n");
+    destroyFeeList(freeList);
+    freeList = NULL;
+
+    return 0;
+}
+```
+
+## 並發安全下的Free List
+```go
+package freeList
+
+import (
+	"fmt"
+	"sync"
+	"unsafe"
+)
+
+type Block struct {
+	Size uintptr
+	Addr unsafe.Pointer
+	Next *Block
+	Id   int
+}
+
+type FreeList struct {
+	head    *Block
+	maxSize uintptr
+	curSize uintptr
+	sync.Mutex
+}
+
+func NewFreeList(maxSize uintptr) *FreeList {
+	return &FreeList{
+		head:    nil,
+		maxSize: maxSize,
+	}
+}
+
+func (f *FreeList) Put(size uintptr, addr unsafe.Pointer, id int) *FreeList {
+	if size > f.maxSize || f.curSize > f.maxSize || f.curSize+size > f.maxSize {
+		fmt.Println("Exceed the maximum size")
+		return f
+	}
+	newBlock := &Block{
+		Size: size,
+		Addr: addr,
+		Id:   id,
+	}
+
+	f.Lock()
+	if f.head == nil || size < f.head.Size {
+		newBlock.Next = f.head
+		f.head = newBlock
+		f.curSize += newBlock.Size
+		f.Unlock()
+		return f
+	}
+
+	cur := f.head
+	for cur.Next != nil && cur.Next.Size < size {
+		cur = cur.Next
+	}
+	newBlock.Next = cur.Next
+	cur.Next = newBlock
+	f.curSize += newBlock.Size
+	f.Unlock()
+	return f
+}
+
+func (f *FreeList) printFreeList() {
+	f.Lock()
+	defer f.Unlock()
+	cur := f.head
+	if cur.Next == nil {
+		fmt.Printf("freeList.head:%d\n", f.head.Id)
+		return
+	}
+
+	for cur != nil {
+		fmt.Printf("freeList address :%d\n", cur.Id)
+		cur = cur.Next
+	}
+}
+
+func (f *FreeList) printAddress() {
+	f.Lock()
+	defer f.Unlock()
+
+	fmt.Println("Free List:")
+	cur := f.head
+	for cur != nil {
+		fmt.Printf("freeList Addr: %p, Id: %d\n", cur.Addr, cur.Id)
+		cur = cur.Next
+	}
+}
+
+func (f *FreeList) currentSize() {
+	fmt.Printf("current free list size %d\n", f.curSize)
+}
+```
