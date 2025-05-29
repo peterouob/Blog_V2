@@ -106,6 +106,7 @@ $\text{physical address} = \text{virtual address} + \text{base register}$
 1. 硬體必須提供base and bound registers,因此每個CPU的Memory Management Unit (MMU)都必須額外擁有這兩個register
 2. 硬體提供一些privileged指令,只有在kernel模式下指行,其作用為修改base register和bound register的值
 3. 當用戶嘗試非法訪問memory時(越界訪問),CPU必須能夠產生異常(exception)並安排os的exception handler來處理這個問題
+
 | 硬體要求                       | 解釋                               |
 |----------------------------|----------------------------------|
 | 特權模式                       | 需要,以防用戶模式的process執行特權操作          |
