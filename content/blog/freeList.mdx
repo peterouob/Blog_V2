@@ -238,45 +238,6 @@ func (f *FreeList) Put(size uintptr, addr unsafe.Pointer, id int) *FreeList {
 		Addr: addr,
 		Id:   id,
 	}
-package freeList
-
-import (
-	"fmt"
-	"sync"
-	"unsafe"
-)
-
-type Block struct {
-	Size uintptr
-	Addr unsafe.Pointer
-	Next *Block
-	Id   int
-}
-
-type FreeList struct {
-	head    *Block
-	maxSize uintptr
-	curSize uintptr
-	sync.Mutex
-}
-
-func NewFreeList(maxSize uintptr) *FreeList {
-	return &FreeList{
-		head:    nil,
-		maxSize: maxSize,
-	}
-}
-
-func (f *FreeList) Put(size uintptr, addr unsafe.Pointer, id int) *FreeList {
-	if size > f.maxSize || f.curSize > f.maxSize || f.curSize+size > f.maxSize {
-		fmt.Println("Exceed the maximum size")
-		return f
-	}
-	newBlock := &Block{
-		Size: size,
-		Addr: addr,
-		Id:   id,
-	}
 
 	f.Lock()
 	if f.head == nil || size < f.head.Size {
