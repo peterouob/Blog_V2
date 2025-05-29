@@ -41,4 +41,86 @@ int main(int argc, char *argv[]) {
 - 利用基於硬體的地址轉換(hardware-based address translation)又稱address translation 來保證高效靈活的虛擬化
   * 使用address translation,硬體對每次memory訪問進行處理都將指令中的victual address轉為十集的physical address來實現受限執行
   * 因此每次memory訪問時,硬體都會進行address translation,將應用程式的memory引用重定位到memory實際位置
-- 
+
+## Example
+- 編寫一段C語言程式碼
+```c
+int main() {
+  int x;
+  x = x + 3;
+}
+```
+- 使用otool來反編譯程式成ASM code
+```asm
+0000000100003f90	ldr	w8, [sp, #0xc] # 載入x變量
+0000000100003f94	add	w8, w8, #0x3 # 將x變量加3
+0000000100003f98	str	w8, [sp, #0xc] # 將結果存回x變量
+```
+### 使用匯編的角度來看
+1. 從地址3f90獲得指令
+2. 執行指令(從地址0xc載入數據)
+3. 從地址3f94獲得指令
+4. 執行指令(沒有memory訪問)
+5. 從地址3f98獲得指令
+6. 執行指令(將結果存回0xc地址)
+
+### 使用程式角度
+- 他的address space從0開始到16KB結束,所有的memory引用都在這範圍內
+- 然後虛擬memory來說,os希望將這些位址放在物理memory的不同地方,不一定從地址0開始,那我們該如何重定向這個process以及對該process保持transparent
+- 底下圖片說明process的address space被放入物理memory後可能的樣子,從圖可以看到操作系統第一塊物理memory留給自己,並將上述地址空間重店味道從32KB開始的物理memory地址,剩下的兩塊memory空閒
+
+![](../../public/v1.png)
+
+
+## Dynamic Address Translation
+- CPU需要兩個硬體Register分別是base register和bound register(也稱為limit register)
+  * base register: os決定process在其裡memory中的實際address,並將起始的address記錄在base register中
+  * bound register: os決定process在其裡memory中的結束address,並將結束的address記錄在bound register中
+- 當CPU訪問memory時,會將虛擬地址與base register和bound register進行比較
+  * 如果虛擬地址小於base register或大於bound register,則會報錯
+  * 如果虛擬地址在base register和bound register之間,則將虛擬地址加上base register的值來獲得物理地址
+- 由上述可以得出一個公式
+$\text{physical address} = \text{virtual address} + \text{base register}$
+
+### Bound Register作用
+- bound register是為了確保process不會超過其address space的範圍,如果process試圖訪問超出其address space的memory,則會報錯
+- 進而隔離當前process和其他process,確保process之間不會互相干擾
+![](../../public/v2.png)
+
+- process中使用德的memory引用都是virtual address,硬體接下來將vitrual address加上base register的值來獲得physical address
+- 底下簡化先前的asm code中指令的位址
+  - 簡化0000000100003f90成128(數字代替表達,不考慮轉換以及值是否正確)
+```asm
+128 ldr	w8, [sp, #0xc] # 載入x變量
+```
+
+### 流程
+1. 當PC首先被設置為128後
+2. 硬體需要獲得這條指令時,先將這個值(128)加上base register的值32KB(32768)來獲得實際的物理位址(32896)
+3. process從virtual address 15KB的加載,處理器同樣需樣virtual address 15KB加上base register的值32KB(32768)來獲得物理位址(48768)
+4. 有了物理位址後,處理器可以從物理memory中讀取數據
+
+- 將虛擬地址轉換為物理地址的過程稱為address translation技術ㄓ,而當這種address translation在運行時發生,並且我們甚至可以在process運行後改變其address space,這種技術被稱為dynamic address translation
+
+## Dynamic Address Translation要求
+1. 硬體必須提供base and bound registers,因此每個CPU的Memory Management Unit (MMU)都必須額外擁有這兩個register
+2. 硬體提供一些privileged指令,只有在kernel模式下指行,其作用為修改base register和bound register的值
+3. 當用戶嘗試非法訪問memory時(越界訪問),CPU必須能夠產生異常(exception)並安排os的exception handler來處理這個問題
+| 硬體要求                       | 解釋                               |
+|----------------------------|----------------------------------|
+| 特權模式                       | 需要,以防用戶模式的process執行特權操作          |
+| base/bound register        | 每個CPU需要一對register來支持地址轉換和bound檢查 |
+| 能夠轉換virtual address並檢查是否越界 | 電路完成轉換和檢查bound                   |
+| 優改base/bound register的特權指令 | 再讓用戶程式運行之前,os必須能夠設定值             |
+| 註冊異常處理的特權指令                | os必須能夠告訴硬體,當異常發生時執行那些程式          |
+| 觸發異常                       | 如果process試圖使用特權指令或越界訪聞           |
+
+## OS: The New Problem
+- 為了支持dynamic address tanslation,硬體支持和操作系統管理結合在一起,實現了一個簡單的虛擬內存系統,因此在關鍵時刻os**需要**介入,已實現base bound方式的虛擬Memory
+
+1. 當process創建時,os必須找到足夠的memory address,而整個操作都會圍繞在Free list上
+
+
+### 補充: Free list
+
+
