@@ -1,0 +1,263 @@
+---
+title: webRTC
+description: 介紹webRTC概念
+date: 2025-05-30
+tags: ["code"]
+---
+
+
+# Introduction to webRTC
+- webRTC 是一系列協議的集合,而整個主題可以分為以下四個步驟
+1. 信號 Signaling
+2. 連接 Connecting
+3. 安全加密 Securing
+4. 通訊 Communicating
+## 簡易步驟流程
+
+### 信號: peer如何在webRTC中找到彼此
+- 當webRTC Agent啟動時,他不知道誰通訊以及其通訊的內容,信號解決了這個問題,信號用於引導呼,以便兩個webRTC Agent開始通訊
+- 信號使用SDP(會話描述協議),每個SDP消息街有一組Key-Value對,並包含Media sections列表,兩個webRTC Agent交換的SDP包含
+1. Agent可供外部訪問(候選)的IP地址和端口
+2. Agent希望發送多少音頻和video streams
+3. Agent支持哪些影音編Communicating碼
+4. 連接時需要用到的值(uFrag/uPwd)
+5. 加密傳輸時需要用到的值(ICE keys)
+### 連接: peer如何建立連接
+- 現在兩個webRTC Agent已經知道彼此的訊息,因此嘗試互相連接,這個過程使用ICE技術
+- ICE(交互式連接建立)允許兩個Agent之間的連接,這些Agent可以在同一個/不同網路上,ICE無需中央伺服器即可建立直接連接的解決方案
+- ICE成功連接後,webRTC 就會繼續建立和加密數據
+### 安全加密: peer如何加密連接
+- 現在藉由ICE成功建立了雙向通訊,webRTC 接下來會使用基於UDP的TLS協議,也被稱為DLTS(數據報傳輸層安全信)以及需要SRTP(安全實時傳輸協議)
+1. webRTC通過ICE建立的連接進行DLTS握手來進行連接,webRTC只判斷通過DTLS交換的證書是否通過信號共享簽名,不會需要相TLS一樣需要CA證書
+2. webRTC使用RTP協議進行影音傳輸,使用SRTP加密RTP數據包,SRTP使用DLTS會話來提取密鑰
+- 現在還需要處理的是數據包丟失和帶寬限制的問題
+### 通訊: peer如何傳輸數據
+- 現在我們具備安全且雙向的通訊功能的webRTC Agent,接下來需要使用RTP(實時傳輸協議)和SCTP(流控制傳輸協議)來傳輸數據
+- 我們使用RTP來交換使用SRTP加密過後的數據,並且使用SCTP發送和接收那些使用DTLS加密過的Data Channel數據
+## webRTC真實面貌
+- webRTC看似複雜,但當我們從不同角度看webRTC Agent時,會發現它不過是許多協議的協調器而已
+![](../../public/webrtc1.png)
+# 信號Signaling
+- 當一個webRTC Agent被創建時,他對其他peer一無所知,因此交換訊號會是初始的引導程式,peer間交換彼此的訊息才可以相互通訊
+- 訊號消息只是文本,webRTC Agent並不關心傳遞的方式,通常使用webSocet傳輸,但不是一定
+
+## 什麼是會話描述協議(SDP)
+- 在webRTC中,兩個webRTC Agent會將建立所需的所有狀態透過SDP來分享
+- SDP本身是一個key-value協議,每一row是一個值
+- SDP的開頭將一單個符號表示(key),等號後面的都是value
+- SDP中的key具有一定的意義,只能使用規定的字母
+```text
+a=my-sdp-value
+a=second-value
+```
+- 在這一個範例中,每行的key都是a且value分別為my-sdp-value和second-value
+## SDP中規範的key值
+- WebRTC並未使用SDP所定義的所有key,只有用在JavaScript Session Establishment Protocol([RFC8829](https://datatracker.ietf.org/doc/html/rfc8829))被使用的key
+
+| 符號 | 定義                                                     |
+|----|--------------------------------------------------------|
+| v  | Version,應為`0`                                          |
+| o  | Origin,包含一個唯一ID,用於重新協商                                 |
+| s  | Session Name,應為 `-`                                    |
+| t  | Timeing,應為`0 0`a                                       |
+| m  | Media Description(`m=<media> <port> <proto> <fmt>...`) |
+| a  | Attribute,一個自由文本字段,為webRTC中最常見的row                     |
+| c  | Connection Data,連接數據,應為`IN IP4 0.0.0.0`                |
+
+
+### Media Description
+- 一個Session中可以包含無限數量的media description
+- 一個media description定義中,包含一個格式列表,這廂格式mapping到RTP有效附載類型上,實際的編解碼器由sdp中的`rtpmap`定義
+
+### 開始分析
+- 以下用一個sdp的部分內容當作範例
+```text
+v=0
+m=audio 4000 RTP/AVP 111
+a=rtpmap:111 OPUS/48000/2
+m=video 4000 RTP/AVP 96
+a=rtpmap:96 VP8/90000
+```
+1. v=0代表的是version,應該為0(由上述表格定義)
+2. 由m可以得知此sdp表中具有兩個media description分別是audio和video
+3. audio 格式為`111`並將有效附載類型mapping到OPUS編解碼器
+4. video 格式為`96`並將有效附載類型mapping到VP8編解碼器上
+
+- 完整範例
+```text
+v=0
+o=- 0 0 IN IP4 127.0.0.1
+s=-
+c=IN IP4 127.0.0.1
+t=0 0
+m=audio 4000 RTP/AVP 111
+a=rtpmap:111 OPUS/48000/2
+m=video 4002 RTP/AVP 96
+a=rtpmap:96 VP8/90000
+```
+- `v`,`o`,`s`,`c`,`t` 雖然被定義,但**不會**對webRTC session產生影響
+- 這邊存在兩個media description分別為audio和video
+- 每個media description都有一個屬性,這個數性配置了RTP管道的詳細訊息
+
+## SDP和WebRTC如何協力工作
+
+- webRTC使用offer和answer模型,一個webRTC Agent發出Offer開始呼叫,如果另一個webRTC Agent接收Offer的內容就會回應Answer
+- 這讓兩個webRTC Peer互相理解對發希望交換何種格式的方式
+
+### 用於發送和接收的Transceivers
+- Transceivers的作用是將SDP中的media description暴露給javascript api,每個media description都將成為一個transceivers,每此創建trannsceivers時,都會將media description添加到本地sdp中
+
+- webRTC中的每個media description都包含一個direction屬性,webRTC可以聲明: 我將向你發送此邊解碼器,但我不接受任何返回值.
+- direction屬性有四個有效值
+
+| 屬性 | 解釋  |
+|----|--------------------------------------------------------|
+| send  |  只傳送不接收,表示此端只會送出媒體資料,但不接收對方的資料(e.g.直播主的端點)                                        |
+| recv  | 只接收不傳送,表使此端只接收媒體資料,不送出自己的資料(e.g. 觀眾端點)                                |
+| sendrecv  | 雙向媒體傳輸,表示發送與接收媒體資料(e.g. 視訊通話)                       |
+| inactive  | 不傳送也不接收                          |
+
+### webRTC用到的SDP值
+|屬性| 解釋|
+|----|-----|
+|group:BUNDLE| BUNDLE是一種在單連接上傳輸懂種類下的行為|
+|fingerprint:sha-256|該屬性是peer用於DTLS證書的Hash值,DTLS握手後會和此證書進行比較|
+|setup|該屬性控制了DTLS Agent的行為,在ICE連接後,該屬性用來確定DTLS Agent是作為client還是server|
+|     |setup:active 作為DTLS client|
+|     |setup:passive 作為DTLS server|
+|     |setup:actpass 要求另一個webRTC Agent選擇|
+| mid |該屬性是media description的唯一ID,用於標示媒體|
+| ice-ufrag| 該屬性是ICE Agent的用戶片段值,用於ICE流量的身份驗證|
+| ice-pwd| 該屬性是ICE Agent的password,用於ICE流量的身份驗證|
+| rtpmap|該屬性是將特定的邊解碼器mapping到RTP有效負載類型,有效負載為動態,每次呼叫時發起者都需要確定每個邊解碼器的有效負載|
+| fmrp| 該屬性為一種有戲負載類型定義的附加值,要傳遞特定的影音配置文件會編碼器設置時用到|
+| candidate|該屬性是ICE Agent的ICE候選地址,為可能被webRTC Agent使用的地址|
+| ssrc| 一個同步源(SSRC)定義了一個單獨的媒體流|
+| label| 是此媒體流的ID|
+|mslabel|是容器的ID,該容器中可能存在多個流|
+
+### 一個範例
+```text
+v=0
+o=- 3546004397921447048 1596742744 IN IP4 0.0.0.0
+s=-
+t=0 0
+a=fingerprint:sha-256 0F:74:31:25:CB:A2:13:EC:28:6F:6D:2C:61:FF:5D:C2:BC:B9:DB:3D:98:14:8D:1A:BB:EA:33:0C:A4:60:A8:8E
+a=group:BUNDLE 0 1
+m=audio 9 UDP/TLS/RTP/SAVPF 111
+c=IN IP4 0.0.0.0
+a=setup:active
+a=mid:0
+a=ice-ufrag:CsxzEWmoKpJyscFj
+a=ice-pwd:mktpbhgREmjEwUFSIJyPINPUhgDqJlSd
+a=rtcp-mux
+a=rtcp-rsize
+a=rtpmap:111 opus/48000/2
+a=fmtp:111 minptime=10;useinbandfec=1
+a=ssrc:350842737 cname:yvKPspsHcYcwGFTw
+a=ssrc:350842737 msid:yvKPspsHcYcwGFTw DfQnKjQQuwceLFdV
+a=ssrc:350842737 mslabel:yvKPspsHcYcwGFTw
+a=ssrc:350842737 label:DfQnKjQQuwceLFdV
+a=msid:yvKPspsHcYcwGFTw DfQnKjQQuwceLFdV
+a=sendrecv
+a=candidate:foundation 1 udp 2130706431 192.168.1.1 53165 typ host generation 0
+a=candidate:foundation 2 udp 2130706431 192.168.1.1 53165 typ host generation 0
+a=candidate:foundation 1 udp 1694498815 1.2.3.4 57336 typ srflx raddr 0.0.0.0 rport 57336 generation 0
+a=candidate:foundation 2 udp 1694498815 1.2.3.4 57336 typ srflx raddr 0.0.0.0 rport 57336 generation 0
+a=end-of-candidates
+m=video 9 UDP/TLS/RTP/SAVPF 96
+c=IN IP4 0.0.0.0
+a=setup:active
+a=mid:1
+a=ice-ufrag:CsxzEWmoKpJyscFj
+a=ice-pwd:mktpbhgREmjEwUFSIJyPINPUhgDqJlSd
+a=rtcp-mux
+a=rtcp-rsize
+a=rtpmap:96 VP8/90000
+a=ssrc:2180035812 cname:XHbOTNRFnLtesHwJ
+a=ssrc:2180035812 msid:XHbOTNRFnLtesHwJ JgtwEhBWNEiOnhuW
+a=ssrc:2180035812 mslabel:XHbOTNRFnLtesHwJ
+a=ssrc:2180035812 label:JgtwEhBWNEiOnhuW
+a=msid:XHbOTNRFnLtesHwJ JgtwEhBWNEiOnhuW
+a=sendrecv
+```
+- 我們可以將這SDP拆成以下
+#### sdp配置
+```text
+v=0
+o=- 3546004397921447048 1596742744 IN IP4 0.0.0.0
+s=-
+t=0 0
+a=fingerprint:sha-256 0F:74:31:25:CB:A2:13:EC:28:6F:6D:2C:61:FF:5D:C2:BC:B9:DB:3D:98:14:8D:1A:BB:EA:33:0C:A4:60:A8:8E
+a=group:BUNDLE 0 1
+```
+
+### 第一個media description
+- 為audio且使用sendrecv來進行雙向溝通
+```text
+m=audio 9 UDP/TLS/RTP/SAVPF 111
+c=IN IP4 0.0.0.0
+a=setup:active
+a=mid:0
+a=rtcp-mux
+a=rtcp-rsize
+a=rtpmap:111 opus/48000/2
+a=fmtp:111 minptime=10;useinbandfec=1
+a=ssrc:350842737 cname:yvKPspsHcYcwGFTw
+a=ssrc:350842737 msid:yvKPspsHcYcwGFTw DfQnKjQQuwceLFdV
+a=ssrc:350842737 mslabel:yvKPspsHcYcwGFTw
+a=ssrc:350842737 label:DfQnKjQQuwceLFdV
+a=msid:yvKPspsHcYcwGFTw DfQnKjQQuwceLFdV
+a=sendrecv
+
+
+```
+
+#### 第二個media description
+- 為video且使用sendrecv進行雙向溝通
+```text
+m=video 9 UDP/TLS/RTP/SAVPF 96
+c=IN IP4 0.0.0.0
+a=setup:active
+a=mid:1
+a=rtcp-mux
+a=rtcp-rsize
+a=rtpmap:96 VP8/90000
+a=ssrc:2180035812 cname:XHbOTNRFnLtesHwJ
+a=ssrc:2180035812 msid:XHbOTNRFnLtesHwJ JgtwEhBWNEiOnhuW
+a=ssrc:2180035812 mslabel:XHbOTNRFnLtesHwJ
+a=ssrc:2180035812 label:JgtwEhBWNEiOnhuW
+a=msid:XHbOTNRFnLtesHwJ JgtwEhBWNEiOnhuW
+a=sendrecv
+```
+
+#### ICE候選地址,為第一個media description中的內容
+- 有ICE候選位址和身份驗證,因此我們可以嘗試連接
+```text
+a=candidate:foundation 1 udp 2130706431 192.168.1.1 53165 typ host generation 0
+a=candidate:foundation 2 udp 2130706431 192.168.1.1 53165 typ host generation 0
+a=candidate:foundation 1 udp 1694498815 1.2.3.4 57336 typ srflx raddr 0.0.0.0 rport 57336 generation 0
+a=candidate:foundation 2 udp 1694498815 1.2.3.4 57336 typ srflx raddr 0.0.0.0 rport 57336 generation 0
+a=end-of-candidates
+```
+
+#### 身份驗證
+1. video
+```text
+a=ice-ufrag:CsxzEWmoKpJyscFj
+a=ice-pwd:mktpbhgREmjEwUFSIJyPINPUhgDqJlSd
+```
+2. audio
+```text
+a=ice-ufrag:CsxzEWmoKpJyscFj
+a=ice-pwd:mktpbhgREmjEwUFSIJyPINPUhgDqJlSd
+```
+
+#### 證書指紋
+- 因為具有證書指紋,因此可以安全呼叫
+```text
+a=fingerprint:sha-256 0F:74:31:25:CB:A2:13:EC:28:6F:6D:2C:61:FF:5D:C2:BC:B9:DB:3D:98:14:8D:1A:BB:EA:33:0C:A4:60:A8:8E
+```
+
+# 參考
+[webRTC](https://webRTCforthecurious.com/zh/docs/01-what-why-and-how/)
