@@ -120,8 +120,96 @@ $\text{physical address} = \text{virtual address} + \text{base register}$
 - 為了支持dynamic address tanslation,硬體支持和操作系統管理結合在一起,實現了一個簡單的虛擬內存系統,因此在關鍵時刻os**需要**介入,已實現base bound方式的虛擬Memory
 
 1. 當process創建時,os必須找到足夠的memory address,而整個操作都會圍繞在Free list上
+  - 可以把整個物理Memory想像成一組抽屜,標記了空閑或以使用,當new process創建時ㄝos檢索這一個抽屜,為新的address space找到位址,並標記成已被使用
+2. 當process終止時,os也必須做一些工作,回收他的所有Memory,給其他process使用,當process終止時,os將會把這些Memory放回空閑列表,並根據需要清除相關的數據結構
+3. 在context switch時,os必須執行一些額外的工作,由於每個CPU都只有一組base and bound register,因此os必須保存和恢復base和bound register
+  - 當process停止時(即終止運行),os可以改變其地址空間的物理位置
+    * 要移動process的address space步驟
+    1. os讓process停止運行
+    2. 將address space拷貝到新的位置
+    3. 更新保存的base register(在process結構中)
+    4. 指向新位置
+  - 當process恢復執行時,其(新)base register就會被恢復,顯然他的指令和數據都在新的Memory位址
+
+4. os必須提供exception handler,或要一些function,當process越界訪問Memory時,CPU會觸發異常,os必須要能夠終止這些process
+
+|  操作系統的要求                      | 解釋                               |
+|----------------------------|----------------------------------|
+| 內存管理                       |  需要為新process分配Memory|
+|                               | 從終止的process回收Memory |
+|                               | 一般通過free list來管理Memory      |
+| base bound 管理       | 必須在context switch時正確設置base和bound register |
+| 異常處理 | 當異常發生時執行的程式,可能的動作是終止犯錯的process                  |
+
 
 
 ### 補充: Free list
+[參考:Free list](https://songlee24.github.io/2015/04/08/free-list/)
 
+## 基於時間線展示硬體和os的互動
+### Boot
 
+| OS @boot (kernel mode)                            | Hardwarre                  |
+|-------------------------------|--------------------------|
+| initialize trap table |                          |
+|    |     remember address of...                     |
+|       |     system call handler                     |
+|    |     timer handler                     |
+|             |     illegal mem-access handler                     |
+|            |     illegal instruction handler                     |
+|                               | Run main()               |
+|                               | Execute return from main |
+| start interrupt timer       |                          |
+|      |start timer;interrupt after $\text{X}_\text{ms}\ $                          |
+| initialize process table| |
+| initialize free list | |
+
+### Run
+| OS @run (kernel mode)                            | Hardwarre                  | Program (user mode)
+|-------------------------------|--------------------------|--------------------------|
+| To start processA: |                          | | |
+| 1. allocate entry in process table | | |
+| 2. alloc memory for process | | |
+| 3. set base and bound registers | |  |
+| 4. return-from-trap (into A) | | |
+|                           |restore registers of A move to user mode jump to A's(initial) PC | |
+| | | Process A runs Fetch instruction |
+| | translate virtual address perform fetch | |
+| | | Execute instruction |
+| | if explicit load sotre | |
+| | 1. ensure address is legal | |
+| | 2. translate virtual address | |
+| | 3.perform load and store | |
+| | | Process A runs |
+| | Timer interrupt | |
+| | move to kernel mode | |
+| | jump to handler | |
+| Hnadle timer | | |
+| 1. decide: stop A, run B | | |
+| 2. call switch() routine | | |
+| 3. save register(A) to process-struct(A) (include base and bound registrer)| | |
+| 4. restore register(B) from process-struct(B) (include base and bound registrer)| | |
+| 5. return-from-trap (into B) | | |
+| | restore register of B | |
+| | move to user mode | |
+| | jump to B's PC | |
+| | | Process B runs Execute bad load |
+| | Load is out-of-bounds | |
+| | move to kernel mode | |
+| | jump to trap handler | |
+| Handle the trap | | |
+| decide to kill process B | | |
+| deallocate B's memory | | |
+| free B's entry in process table | | |
+
+## 目前問題
+- 簡單的Dynamic Address translation能夠支持Process transparent但還有問題無法解決
+- 重定位process使用了從 $\text{32KB}$ 到 $\text{48KB}$ 的物理地址,但由於process的stack和heap並不是很大,導致這塊Memory中大量的空間被浪費
+  - 這種浪費稱為intrenal fragmentation
+
+### internal fragmentation
+- 指的是已經分配的Memory單元內部有未使用的空間(即fragmentation).造成了浪費,
+  - 因為這些fragmentation無法被其他process使用(不足其他process的需求)
+- 在我們當前的方式中,即使有足夠的物理Memory容納更多process,但我們目前要求將adress spoace放在固定大小的抽屜,因此出現了internal fragmentation
+
+# Segmentation
