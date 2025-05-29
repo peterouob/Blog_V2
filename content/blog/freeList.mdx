@@ -238,6 +238,45 @@ func (f *FreeList) Put(size uintptr, addr unsafe.Pointer, id int) *FreeList {
 		Addr: addr,
 		Id:   id,
 	}
+package freeList
+
+import (
+	"fmt"
+	"sync"
+	"unsafe"
+)
+
+type Block struct {
+	Size uintptr
+	Addr unsafe.Pointer
+	Next *Block
+	Id   int
+}
+
+type FreeList struct {
+	head    *Block
+	maxSize uintptr
+	curSize uintptr
+	sync.Mutex
+}
+
+func NewFreeList(maxSize uintptr) *FreeList {
+	return &FreeList{
+		head:    nil,
+		maxSize: maxSize,
+	}
+}
+
+func (f *FreeList) Put(size uintptr, addr unsafe.Pointer, id int) *FreeList {
+	if size > f.maxSize || f.curSize > f.maxSize || f.curSize+size > f.maxSize {
+		fmt.Println("Exceed the maximum size")
+		return f
+	}
+	newBlock := &Block{
+		Size: size,
+		Addr: addr,
+		Id:   id,
+	}
 
 	f.Lock()
 	if f.head == nil || size < f.head.Size {
@@ -257,6 +296,30 @@ func (f *FreeList) Put(size uintptr, addr unsafe.Pointer, id int) *FreeList {
 	f.curSize += newBlock.Size
 	f.Unlock()
 	return f
+}
+
+func (f *FreeList) Get(size uintptr) (unsafe.Pointer, uintptr) {
+	var prev *Block
+	cur := f.head
+	f.Lock()
+	for cur != nil {
+		if cur.Size >= size {
+			if prev == nil {
+				f.head = cur.Next
+			} else {
+				prev.Next = cur.Next
+			}
+			f.curSize -= cur.Size
+			f.Unlock()
+			return cur.Addr, cur.Size
+		}
+
+		prev = cur
+		cur = cur.Next
+	}
+	f.Unlock()
+	fmt.Println("找不到適合的Block")
+	return nil, 0
 }
 
 func (f *FreeList) printFreeList() {
@@ -289,4 +352,52 @@ func (f *FreeList) printAddress() {
 func (f *FreeList) currentSize() {
 	fmt.Printf("current free list size %d\n", f.curSize)
 }
+```
+
+### 測試
+
+```go
+package freeList
+
+import (
+	"math/rand"
+	"sync"
+	"testing"
+	"time"
+	"unsafe"
+)
+
+func TestFreeList(t *testing.T) {
+	f := NewFreeList(1024)
+	f.currentSize()
+	f.Put(10, unsafe.Pointer(&[10]byte{}), 10)
+	f.Put(17, unsafe.Pointer(&[14]byte{}), 12)
+	f.Put(13, unsafe.Pointer(&[18]byte{}), 23)
+	f.Put(4, unsafe.Pointer(&[22]byte{}), 13)
+	f.currentSize()
+	f.Get(5)
+	f.Get(10)
+	f.currentSize()
+	f.printFreeList()
+}
+
+func TestMutilPut(t *testing.T) {
+	f := NewFreeList(1024 * 1024 * 1024)
+	s1 := rand.NewSource(time.Now().UnixMilli())
+	r1 := rand.New(s1)
+	f.currentSize()
+	wg := sync.WaitGroup{}
+	for i := uintptr(0); i < 20; i++ {
+		wg.Add(1)
+		go func(i uintptr) {
+			defer wg.Done()
+			buf := make([]byte, i+1)
+			f.Put(i+uintptr(r1.Intn(100)), unsafe.Pointer(&buf[0]), int(i))
+		}(i)
+	}
+	wg.Wait()
+	f.currentSize()
+	f.printAddress()
+}
+
 ```
