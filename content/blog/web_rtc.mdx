@@ -377,6 +377,126 @@ a=fingerprint:sha-256 0F:74:31:25:CB:A2:13:EC:28:6F:6D:2C:61:FF:5D:C2:BC:B9:DB:3
 
 - 由上述NAT Mapping類型和NAT Filtering可以知道,如果NAT類型不同有可能導致無法順利連結,[rfc5780](https://rfc2cn.com/rfc5780.html)提供了一套測試機制,我們可以具體分析 NAT 的實際行為
 
+## TURN
+- 當兩個peer的NAT類型不兼容,或者雙方運行不同協議or不同IP版本時,就會需要TURN(使用Relayed穿越NAT)
+  - TURN 也可以用於保護隱私的目的,通過TURN所運行的通訊真實地址在對方那邊都是被隱藏的
+
+- TURN使用專業服務器,該服務器充當客戶端的代理,客戶端連接到TURN服務器並創建一個對應的Allocation
+  - 通過創建該Allocation客戶端獲得一個臨時的IP/PORT/協議三元組,這一個新的監聽地址被稱為Relayed Transport Address
+  - 其他peer就可以通過該IP/PORT/協議將數據發送給客戶端
+  - 每個獲得該Relayed傳輸位址的peer必須創建一個新的Permission才允許通訊
+- 當通過TURN發送出站流量時,會通過Relayed傳輸位址發送;當遠程peer獲得該出站流量時,他們會看到數據來自TURN服務器
+
+### TURN生命週期
+- 對於其他peer而言,客戶端創建TURN allocation時做的所有事情,與使用TURN服務器的客戶端進行通訊和其他客戶端沒有區別
+  1. 獲得IP/PORT
+  2. 像其他主機一樣通訊
+
+#### Allocations
+- Allocations是TURN的核心,本質上allocation就是一個TURN會話,創建一個TURN `allocation`需要和TURN `server Transport Address`進行通訊
+  - TURN Server Transport Address(服務器傳輸地址),通常port在3478
+- 創建Allocation時,需要提供/確認以下內容
+  1. 用戶名/密碼: 創建TURN allocation時需要身份驗證
+  2. Allocation傳輸方式: 服務器(Relayed傳輸地址)與peer之間的傳輸協議,為TCP/UDP
+  3. 連續port: 可以為多個allocation請求順序排列的一系列port,這點和webRTC無關
+- 如果請求成功的話,將會在TURN服務器上獲得Response,Response的數據部分包含以下與STUN有關的屬性
+  1. `XOR-MAPPED-ADDRESS`: `TURN Client`的`Mapped Address`,當有人將數據發送到Relayed傳輸位址時將會被轉發到這裡
+    - Mapped Address本質上就是Turn Client的實際地址,也就是Turn Server收到數據包時的目標地址
+  2. `RELAYED-ADDRESS`: 這是提供給其他客戶端的地址,如果有人將數據包發送到該地址時會被轉發到TURN客戶端
+    - Relayed Address是Turn Client名議上的地址,也就是其他webRTC Agent發送數據給這個Turn Client時使用的地址
+  3. `LIFETIME`: Allocation被銷毀的時間,可以通過發送`Refersh`請求來延長時間
+
+#### 權限
+- 在為遠端主機創建權限之前,遠端主機沒辦法通過其他人創建的Relayed傳輸地址發送數據
+  - 所謂的創建權限即是告知TURN server一個可以用來收發流量的IP/PORT
+
+- 遠程主機需要先提供TURN服務器上使用的IP/PORT,意味著先向TURN server發送一個STUN綁定請求
+  - 有時候會發生的常見錯誤為主機發送STUN綁定請求到另外一台服務器(非原本目標),然後再要求TURN為此IP創建權限
+- 對於這種錯誤,指的是被連接的主機從TURN服務器以外的STUN/TURN服務器獲得本機IP,再告知發起連接主機的情況,當被連接主機使用NAT中的**地址相關的映射**,獲取的IP在當前TURN服務器上是無效的
+
+#### SendIndication/ChannelData
+- 這是TURN客戶端將消息發送到遠端peer時所使用的兩個訊息
+- SendIndication是一個自包含的訊息,他包含你希望發送的數據,以及希望發送的目標(消耗非常昂貴,因為發送 $N$ 條訊息目標IP就會被重複 $N$ 次)
+- ChannelData允許你發送數據但不用重複IP地址
+  - 發送時先創建一個具有IP/PORT的channel,然後使用該Channel發送,在發送的時候IP/PORT將會在server端被填充(發送大量消息的好選擇)
+
+#### 刷新
+- Allocations將會自動銷毀,如果要避免過早銷毀的話,TURN client必須在創件allocation時指定的LifeTime到來前主動刷新
+
+### TURN使用方法
+
+- 一個peer作為TURN客戶端,另一方直接通訊
+  - 單個TURN Allocation指的是一個TURN client和另一個可訪問的UDP client
+<Image src="../../public/webrtc5.png" width="1400" height="600" />
+
+- 兩側都使用TURN服務(e.g. 假設兩個客戶端都在禁用UDP的網路當中,只能通過TCP連接到個字的TURN服務器來連接)
+  - 雙重TURN Allocation指的是兩個TURN client之間的通訊
+<Image src="../../public/webrtc2.png" width="1400" height="600" />
+## ICE
+- ICE(交互式連接)是webRTC連接兩個Agent的方式,他會確保兩個peer間所有可能的router,然後確保你保持連接的狀態
+
+- 這些router被稱為Candidate Pair(候選地址對),也就是本地地址和遠端地址的配對
+  - 這些地址有可能是本地IP,NAT映射或是Relayed傳輸位址,也就是STUN和TURN在ICE中發揮作用的地方
+  - 通訊的雙方需要收集他們要使用的所有地址並且交換,連接
+- 當兩個ICE Agent使用ICE ping數據包(正式名稱為連通性檢查)通訊已建議連結,一但建立連接後兩個Agent就可以像普通使用socket一樣任意發送數據
+  - ping數據包(連通信檢查)使用的是STUN協議
+
+### 創建ICE Agent
+- ICE Agent只有兩種狀態
+  1. 控制中: 處於控制中的Agent決定選擇Candidate Pair的目標Agengt(通常發送offer的peer會是控制方)
+  2. 受控中: 被控制的Agent
+- 每一方都會有一個用戶片段和密碼,需要交換這兩個值才能進行連接性檢查
+  - 用戶片段以純文本發送,用於多個ICE會話的解復用(demux)
+  - 密碼用於生成`Message-INTEGRITY`屬性
+    - `Message-INTEGRITY`屬性在每個STUN數據包的末尾,該屬性使用密碼作為金鑰進行對整個數據包進行哈希加密,驗證數據包並未被竄改
+
+### 候選地址升級
+- 收集所有可能聯通得地址,這些被收集的地址稱為Candidate
+
+#### 主機
+- 主機Candidate直接在本地接口上監聽,可以是TCP or UDP
+
+#### mDNS
+- 類似主機Candidate但區別在其IP被隱藏,因此不再需要提供IP地址,只需要提供一個UUID作為主機名,並設置監聽器已在請求UUID時響應
+  - 這對保護隱私很有用,在具備mDNS之前,用戶可以通過webRTC使用主機Candidate來找出對方的本地IP,因為有mDNS所以只找得到UUID
+- 如果和Agent在相同網路中的話,可以找到彼此,否則無法連接(除非網路管理員明確配置網路允許多播數據包通過)\
+
+#### Server Reflextive
+- 通過對STUN服務器執行Binding Request時生成
+- 當收到STUN的Binding Response時,`XOR-MAPPED-ADDRESS`就是Server Reflexive Candidate
+
+#### Peer Reflextive
+- 當遠端Peer B從之前未知的地址收到本端Peer A發出的請求時,遠端Peer B會將他所看到的本端Peer A地址報告給我們
+  - 這個地址就是本端Peer A的Peer Reflextive Candidate,因為ICE需要經過身份驗證,因此遠端Peer B就會認得本端Peer A而非當作其他人
+
+- 發生在當host Candidate與Server Reflextive Candidate進行通訊的時候,由於在子網外部進行通訊,因此創建了一個新的NAT映射
+- 因為ICE的連通性檢查實際是檢查STUN數據包,因此STUN Response允許Peer報告Peer Reflextive Candidate
+
+#### Relay
+- Relay Candiadate是通過使用TURN服務器生成
+  - 在和TURN Server進行初次握手時獲得的`RELAYED-ADDRESS`就是Relay Candiadate
+
+### 連通性檢查
+- 現在知道了遠端Agent的用戶片段,密碼以及Candiadate就可以嘗試連接
+- 假設每邊有3個候選地址,因為可以相互配對的關係引此有9個候選地址
+
+<Image src="../../public/webrtc6.png" width="800" height="400" />
+
+### Candiadate選擇
+- 以下展示Candiadate選則的流程
+1. 控制中的Agent和受控中的Agent都開始在每個Candiadate發送流量數據
+  - 這是必須的,如果一個Agent位於地址相關映射的網路中會創建Peer Reflextive Candiadate
+2. 收到流量數的Candiadate pair會被提升爲有效Candiadate pair
+3. 控制中的Agent將指定一個有效Candiadate pair(這行為就是提名Candiadate pair)
+4. 控制中的Agent會和受控中的Agent再進行一輪雙向通訊
+5. 如果成功,被提名的Candiadate pair將成為選定的Candiadate pair(將會被用在後續的會話中)
+
+### 重新啟動
+- 如果選定的Candiadate pair由於任何原因停止工作,則ICE Agent進入失敗狀態,此時可以重新請動兩個Agent再次執行完整流程
+  - 原因包括但不限於Nat映射到期,TURN server崩潰等
+
+### ICE Connect Flow Chart
+<Image src="../../public/webrtc7.png" width="800" height="600" />
 
 # 參考
 [webRTC](https://webRTCforthecurious.com/zh/docs/01-what-why-and-how/)
