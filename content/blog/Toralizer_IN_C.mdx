@@ -9,7 +9,7 @@ tags: ["c","code","net"]
 - system call
   `man 2 socket`
 - library call
-  `man 3 atoi`
+  `man 3 atoi｀
 
 
 ## argv in c
@@ -149,7 +149,7 @@ Req *request(const char *dstip, const int dstport)
   char buf[ressize];
   // boolean
   int success;
-    
+
   req = request(host, port);
   write(s, req, reqsize);
 
@@ -159,7 +159,7 @@ Req *request(const char *dstip, const int dstport)
      perror("read");
      free(req);
      close(s);
-     
+
      return -1;
   };
 
