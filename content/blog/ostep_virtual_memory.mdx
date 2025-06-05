@@ -213,3 +213,107 @@ $\text{physical address} = \text{virtual address} + \text{base register}$
 - 在我們當前的方式中,即使有足夠的物理Memory容納更多process,但我們目前要求將adress spoace放在固定大小的抽屜,因此出現了internal fragmentation
 
 # Segmentation
+- 目前的情況都是將所有的process載入到Memory中,並且使用base/bound register來讓os將不同的process進行address translation到不同的physical address,但這樣會發現在stack和heap間存在很大的空閑區塊
+![](../../public/v1.png)
+
+## Segmentation 范化的base/bound
+- 在MMU中引入不只base/bound register,而是給address space內的每個segment一對,一個segment只是address space中的連續定長區域,典型的segment有3個部分
+  1. code
+  2. stack
+  3. heap
+- segment讓os將不同的segment放到不同的physical address,從而避免了虛擬address space中未使用但佔用physical memory的問題
+
+|segment|base|bound|
+|-------|----|-----|
+|code|32KB|2KB|
+|heap|34KB|2KB|
+|stack|28KB|2KB|
+
+- 假設現在引用virtual address為100的地址,MMU將base加上偏移量得到實際的physical address $100+32KB=32868$ , 然後再檢查該地址是否在bound內(這邊的地址指的不是實際physical address,而是vitrualaddress 的地址) $100 < 2KB$ , 發現再bound內部後就發起調用
+
+- 再看到圖1的範例,假設現在要引用的是heap的地址,假設直接將4200加上stack的base 34KB的話會是錯的,因為4200的基底是從4KB(4096)開始,因此應該是 $4200-4096=104$, 然後再檢查該地址是否在bound內,確認在bound內後再將 $104+32KB=34920$ 得到實際的physical address
+
+- 當我們試圖訪問超過bound的address時,就會發生segmentation violation 或是 segmentation fault
+
+## 怎麼知道調用的是那個Segment
+![](../../public/v3.png)
+
+- 由圖中可以知道前兩位代表的是告hardware説調用的是哪一個段(stack,heap,code),剩下的12位則是偏移量
+  - 因此先使用前兩位找到相對應的segment後再使用偏移量+基底address就可以獲得實際的物理位址
+- 現在可以將上述所做轉換成程式碼的形式,也因為偏移量簡化了對bound的判斷,因此只需要檢查偏移量是否小於bound而非大於bound的非法地址
+
+```c
+#define SEG_MASK 0x3000
+#define SEG_SHIFT 12
+#define OFFSET_MASK 0xFFFF
+
+// get top 2 bits of 14-bit
+Segment = (VirtualAddress & SEG_MASK) >> SEG_SHIFT
+
+// get offset
+Offset = VirtuaalAddress & OFFSET_MASK
+
+if (Offset >= Bounds[Segment])
+  RaiseException(PROTECETION_FAULT)
+else
+  PhysAddr = Base[Segment] + Offset
+  Register = AccessMemory(PhysAddr)
+```
+
+- 這邊只使用兩個段是因為,假設使用3個段表示的話,有可能會造成其中一個被浪費,因此有些系統會將heap和stack當成一個段,然後用一bit來做標示
+- 在implicit方式中,硬體功過address產生的方式來確定段
+  - 例如: 如果地址由pc產生,即為指令獲取,則位址在code段, 假設基於stack或base指針則一定在stack段,其他地址在heap段
+
+## How about Stack
+- 在上圖中可以看到stack被重定位到28KB的地方,但和其他不同的地方在於stack是反向增長的,也就是始於28KB增長到26KB,相對應的虛擬地址也是從16KB到14KB
+- 因此硬體需要額外已1bit來區分是否為反相增長(1代表正向,0代表反向)
+|segment|base|bound|reverse|
+|-------|----|-----|-------|
+|code|32KB|2KB|1|
+|heap|34KB|2KB|1|
+|stack|28KB|2KB|0|
+
+- 因為反向的緣故,在計算address transtaltion時會有所不同
+  - 假設現在要訪問的是15KB的虛擬地址,對應到的物理地址為27KB
+
+1, 先將15KB轉換成2進制形式 11 1100 0000 0000,利用前兩位來指定段,並且計算出偏移量為3KB
+2. 為了得到正確的偏移量,因此要將現在的偏移量減去最大的段地址(即為bound的上界地址)
+
+$ 3KB - 4KB = -1KB $
+
+3. 此時再將偏移量加上base address得到實際的physical address
+
+$ -1KB + 28KB = 27KB$
+
+4. 進行bound檢查,確保偏移量的 *絕對值* 小於sagment的大小
+
+## Support Shared
+- 為了節省Memory,有時會在address space之間共向segment是有用的行為,因此硬體會需要新增protecetion bit來標示是否能夠對segment進行RW
+- 將code segment標示為只讀時,可以讓他被多個process共享但不會破壞process 間的隔離
+
+|segment|base|bound|reverse|protect|
+|-------|----|-----|-------|-------|
+|code|32KB|2KB|1|Read-Excute|
+|heap|34KB|2KB|1|Read-Write|
+|stack|28KB|2KB|0|Read-Write|
+
+- 有了protection bit後前面虛擬地址是否越界外,還需要檢查特定的訪問是否允許,如果從事非法訪問hard會拋出異常並且讓os來handle這些error
+
+## 操作系統支持
+- 現在當系統運行時,address space會被不同的segment重定位到physical memory中,相比於之前使用base/bound的方法節省了不少的physical memory
+  - 具體來說 stack和heap不需要再分配physical memory,讓我們能將更多的address space放入 physical memory
+
+### 遇到的問題
+1. os在進行Context switch 時該做些什麼
+
+- 各個segment register中的內容必須保存和恢復,因為每個process都有自己獨立的vritual address space, 因此os必須在process運行前確保被正確設置
+
+2. physical address 中充滿了許多free space的小洞,這些洞很難再分配給新的segment或是擴充原有的segment,這類的問題被稱為(external fragmentation)
+
+- 第一種解法是compact physical memory
+  - os 將所有的process終止後,將數據複製到連續的memory區域中,並且改變他們的segment register內的值,指向新的物理地址,從而獲得足夠大的連續空間
+  - 但這樣造成的問題是成本很高,因為copy segment是memory intensive(密集),因此會佔用大量的processor(處理器)時間
+- 第二種解法是利用 free-space management算法,試圖保留較大的memory區塊來進行分配
+
+# Page
+
