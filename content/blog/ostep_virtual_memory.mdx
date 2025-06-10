@@ -452,30 +452,6 @@ for(int i=0;i<1000;i++)
 - 對每次memory access, hardware先檢查TLB內的訊息,如果有可以直接完成mapping而不用訪問page table
 
 ## TLB基本算法
-<MermaidDiagram chart={`
-graph TD
-  Start([Start]) --> GetVPN["VPN = (VA AND VPNMASK) SHIFT_RIGHT SHIFT"]
-  GetVPN --> LookupTLB["(Success, Entry) = TLB_Lookup(VPN)"]
-
-  LookupTLB --> TLBHit{Success is true}
-  TLBHit --> AccessAllowed{Can access: Entry ProtectBits?}
-  AccessAllowed --> CalcOffset["Offset = VA AND OffsetMask"]
-  CalcOffset --> CalcPA["PhysAddr = (PFN SHIFT_LEFT SHIFT) OR Offset"]
-  CalcPA --> AccessMem["AccessMemory(PhysAddr)"]
-
-  AccessAllowed -->|No| SegFault1["RaiseException: SEGMENTATION_FAULT"]
-
-  TLBHit -->|No| GetPTEAddr["PTEAddr = PTBR + (VPN * PTE_SIZE)"]
-  GetPTEAddr --> ReadPTE["PTE = AccessMemory(PTEAddr)"]
-  ReadPTE --> PTEValid{PTE valid bit is true}
-
-  PTEValid -->|No| SegFault2["RaiseException: SEGMENTATION_FAULT"]
-  PTEValid --> PTEAccess{Can access: PTE ProtectBits?}
-  PTEAccess -->|No| SegFault3["RaiseException: SEGMENTATION_FAULT"]
-  PTEAccess -->|Yes| InsertTLB["TLB_Insert(VPN, PFN, ProtectBits)"]
-  InsertTLB --> Retry["RetryInstruction()"]
-`} />
-
 
 ```c
 VPN = (VirtuaalAddress & VPNMASK) >> SHIFT;
