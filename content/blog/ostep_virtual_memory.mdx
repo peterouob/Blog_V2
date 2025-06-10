@@ -267,6 +267,7 @@ else
 ## How about Stack
 - 在上圖中可以看到stack被重定位到28KB的地方,但和其他不同的地方在於stack是反向增長的,也就是始於28KB增長到26KB,相對應的虛擬地址也是從16KB到14KB
 - 因此硬體需要額外已1bit來區分是否為反相增長(1代表正向,0代表反向)
+
 |segment|base|bound|reverse|
 |-------|----|-----|-------|
 |code|32KB|2KB|1|
@@ -317,3 +318,197 @@ $ -1KB + 28KB = 27KB$
 
 # Page
 
+- os 有兩種方法管理和解決空間問題
+  1. 分片:將空間分成不同的分片(segment),就像 virtual memory 中管理,但將空間切成不同長度的分片後空間會碎片化(framented),導致時間越長越難分配
+  2. 分頁:將空間分成固定長度的分片,和分片不同的是分頁不是將一個process的address space分割成不同長度的logic段,而是把physical memory看成*定長*曹塊的陣列(page frame)
+    - 每個page frame包含一個virtual memory page
+
+- 下圖是一個關於page的簡單範例,左邊的 virtual memory而右邊是對應到的 physical memory
+  - 可以看到改進了原先使用segment的靈活性,通過完善分頁方法可以有效提供address space,不管process如何使用address space,並且也提供了 free list管理的簡單性
+    - os希望將64 byte的小address space放到8page的physical address space中只需要從free list找到4個空閑就可以
+
+<div class="flex">
+<Image src="../../public/v5.png" width="1000" height="400" />
+<Image src="../../public/v4.png" width="800" height="400" />
+</div>
+
+- 為了記錄address space中每個virtual page放在physical memory中的位置, os 會為每個process保存名為page table的數據結,主要存放為virtual page 的address translatiion
+  - 使用右邊的圖當作範例, page table會有以下4個條目
+  - $\text{virtual page} \equiv \text{VP}$
+  - $\text{physical frame} \equiv \text{PF}$
+$$
+\begin{align*}
+1. \text{VP}0 \rightarrow \text{PF}3 \\
+2. \text{VP}1 \rightarrow \text{PF}7 \\
+3. \text{VP}2 \rightarrow \text{PF}5 \\
+4. \text{VP}3 \rightarrow \text{PF}2
+\end{align*}
+$$
+
+## translation
+- 現在要從virtual memory找到對應的physical memory
+- 假設我們擁有64byte的process正在訪問memory
+
+```asm
+movl <virtual address>, %eax
+```
+
+- 為了translate該過程生成的virtual address,必須將 virtual address分成兩個組件
+  1. virtual page number, VPN
+  2. page中的偏移量, offset
+
+- 從剛剛virtual memory中的圖可以知道將64byte空間分成4個page,因此每個page為16byte
+$$
+  64Byte/4Byte = 16Byte
+$$
+- 然後virtual address space總共為64byte,因此地址總共需要6位
+$$
+  \log_2{64} = 6
+$$
+- 此時就可以將page切塊
+  - 從剛剛得知一個page的大小為16Byte,因此可以知道Offset大小
+  - page大小為16byte位於64Byte中,因此可以選擇4個page,VPN做的就是選取這件事
+$$
+\begin{align*}
+Offset = \log_2{64} = 4 \\
+VPN = \log_2{4} = 4
+\end{align*}
+$$
+
+![](../../public/v6.png)
+
+### Example
+- 假設尋找virtual address為21
+1. 先將21轉為2進制 $010101$
+2. 依照前面的算法得知
+  - VPN在第一頁所在的physical page (01)
+  - 而Offset則為(0101)
+3. 找到physical page中對應的PFN(由上圖得知在第7個frame),因此PFN(有時也稱PPN)為7(111)
+4. Offset不變
+5. 因此找到對應的physical address 為 $1110101$
+
+## paging 很慢
+- 一樣使用movl模擬分頁並循找原因
+```asm
+movl 21, %eax
+```
+- 現在只在乎對21的顯示引用,要先將21轉換成對應的physical address,但在從對應的pphysical address前,必須先從process的page中提取適當的項進行轉換
+  - 此時將 VPNMASK 設定為 $0x30 \rightarrow 110000_2$ (原因為VPN切割後只有2位)
+  - SHIFT為offset的位元數(4)
+- 為了要獲得正在運行的process中page的位址,需要假設一個page-table base register包含page起始位址的physical address
+```c
+VPN = (VirtuaalAddress & VPNMASK) >> SHIFT;
+PTEADDR = PageTableBaseRegister + (VPN * sizeof(PTE));
+```
+- 找到VPN後將該值作為page-table base register指向PTE數組的index
+- 一但知道這個物理地址後,hardware就可以從memory中獲得PTE並且提取PFN,並將來自Virtual address的offset進行計算,形成最後的physical address
+  - 可以想像PFN被SHIFT左移,然後和偏移量進行計算形成最終地址
+```c
+VPN = (VirtuaalAddress & VPNMASK) >> SHIFT;
+PTEADDR = PageTableBaseRegister + (VPN * sizeof(PTE));
+PTE = AccessMemory(PTEADDR);
+
+if(PTE.valid == False)
+  RaiseException(SEGMENTATION_FAULT);
+else if(CanAccess(PTE.protectBits) == FALSE)
+  RaiseException(SEGMENTATION_FAULT);
+else
+  offset = VirtuaalAddress & OffsetMask;
+  PhysAddr = (PFN << SHIFT) | Offset;
+  Register = AccessMemory(PhysAddr);
+```
+
+## Memory Trace
+- 假設今天有一個C code
+```c
+int array[1000];
+// ...
+for(int i=0;i<1000;i++)
+  array[i] = 0;
+```
+- 將它轉換成asm code後
+```asm
+0x1024  movl $0x0, (%edi,%eax,4)
+0x1028  incl %eax
+0x102c  cmpl $0x03e8,%eax
+0x1030  jne 0x1024
+```
+- 假設有一張線性表(array)則可以由此推斷出在此數組中VPN對應的PFN
+  - mov 則會有一個顯示的memory 引用,這會先增加另一個page table訪問(將數組vritual address轉換成正確的physical address)
+![](../../public/v7.png)
+
+- 假設現在超過圖中的5次訪問
+  1. 當找到超過當前VPN時會進行換頁查找
+  2. 而會新訪問incstruction memory, data memory(array), page table memory
+
+# TLB
+- 現在的paging之所以慢是因為將memory address space切分成大量固定大小的page,並且需要記錄mapping的訓息(virtual -> physical)
+- 因為這些訊息一般存在physical memory中,所以在translation virtual memory時,page需要一次額外的memory access
+  - 每次的fetch instruction, load, store都需要額外讀一次memory才能得到translation訊息
+
+## 使用Cache解決
+- 增加translation-lookaside buffer(TLB)儲存頻繁發生的virtual address to physical address的hardware cache
+  - 因此也稱為address-translatiion cache
+- 對每次memory access, hardware先檢查TLB內的訊息,如果有可以直接完成mapping而不用訪問page table
+
+## TLB基本算法
+<MermaidDiagram chart={`
+graph TD
+  Start([Start]) --> GetVPN["VPN = (VA AND VPNMASK) SHIFT_RIGHT SHIFT"]
+  GetVPN --> LookupTLB["(Success, Entry) = TLB_Lookup(VPN)"]
+
+  LookupTLB --> TLBHit{Success is true}
+  TLBHit --> AccessAllowed{Can access: Entry ProtectBits?}
+  AccessAllowed --> CalcOffset["Offset = VA AND OffsetMask"]
+  CalcOffset --> CalcPA["PhysAddr = (PFN SHIFT_LEFT SHIFT) OR Offset"]
+  CalcPA --> AccessMem["AccessMemory(PhysAddr)"]
+
+  AccessAllowed -->|No| SegFault1["RaiseException: SEGMENTATION_FAULT"]
+
+  TLBHit -->|No| GetPTEAddr["PTEAddr = PTBR + (VPN * PTE_SIZE)"]
+  GetPTEAddr --> ReadPTE["PTE = AccessMemory(PTEAddr)"]
+  ReadPTE --> PTEValid{PTE valid bit is true}
+
+  PTEValid -->|No| SegFault2["RaiseException: SEGMENTATION_FAULT"]
+  PTEValid --> PTEAccess{Can access: PTE ProtectBits?}
+  PTEAccess -->|No| SegFault3["RaiseException: SEGMENTATION_FAULT"]
+  PTEAccess -->|Yes| InsertTLB["TLB_Insert(VPN, PFN, ProtectBits)"]
+  InsertTLB --> Retry["RetryInstruction()"]
+`} />
+
+
+```c
+VPN = (VirtuaalAddress & VPNMASK) >> SHIFT;
+(Success,TlbEntry) = TLB_Lookup(VPN);
+if(Success == true)
+  if(CanAccess(TlbEntry.ProtectBits) == True)
+    offset = VirtuaalAddress & OffsetMask;
+    PhysAddr = (TlbEntry.PFN << SHIFT) | Offset;
+    Register = AccessMemory(PhysAddr);
+  else
+    RaiseException(SEGMENTATION_FAULT);
+else
+  PTEAddr = PTBR + (VPN * sizeof(PTE));
+  PTE = AccessMemory(PTEADDR);
+
+  if(PTE.valid == False)
+    RaiseException(SEGMENTATION_FAULT);
+  else if(CanAccess(PTE.protectBits) == FALSE)
+    RaiseException(SEGMENTATION_FAULT);
+  else
+    TLB_Insert(VPN,PTE.PFN,PTE.ProtectBits);
+    RetryInstruction();
+```
+
+### 文字流程如下
+1. 從Virtual address中提取VPN
+2. 檢查TLB內是否有該VPN的轉換地址
+  - 假設命中成功,則從相關的TLB取出PFN後與原來的virtual address中的Offset組合形成Physical address,並訪問memory
+3. 如果沒有命中,hardware訪問page table來尋找PTE
+4. 假設該PTE可以訪問
+5. 將新的translation 訊息插入TLB
+6. 重新執行一次指令(讓該TLB hit然後訪問Memory以避免什麼都沒發生)
+
+- 因為訪問page table需要額外的memory access因此造成較大的性能開銷,因此我們會希望盡量避免TLB miss
+
+## Access array
