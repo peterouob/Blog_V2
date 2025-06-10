@@ -375,8 +375,7 @@ VPN = \log_2{4} = 4
 \end{align*}
 $$
 
-![](../../public/v6.png)
-
+<Image src="../../public/v6.png" width="300" height="100" />
 ### Example
 - 假設尋找virtual address為21
 1. 先將21轉為2進制 $010101$
@@ -435,7 +434,8 @@ for(int i=0;i<1000;i++)
 ```
 - 假設有一張線性表(array)則可以由此推斷出在此數組中VPN對應的PFN
   - mov 則會有一個顯示的memory 引用,這會先增加另一個page table訪問(將數組vritual address轉換成正確的physical address)
-![](../../public/v7.png)
+
+<Image src="../../public/v7.png" width="600" height="400" />
 
 - 假設現在超過圖中的5次訪問
   1. 當找到超過當前VPN時會進行換頁查找
@@ -488,3 +488,43 @@ else
 - 因為訪問page table需要額外的memory access因此造成較大的性能開銷,因此我們會希望盡量避免TLB miss
 
 ## Access array
+<div class="flex">
+
+1. 一開始先訪問a[0],TLB miss後將VPN=06的translation information都放入cahce
+2. 接下來訪問a[1],就可以直接TLB hit然後進行轉換
+3. 因此最後總共會有7次的TLB hit,3次的TLB miss, hit rate為70%
+<Image src="../../public/v8.png" width="300" height="100" />
+
+</div>
+
+- 因此我們知道page的大小會影響結果,對於像array這種密集訪問的memory會獲得極好的性能
+- TLB的成功依賴於時間局部性(temporal locality)和空間局部性(spatial locality),只要某個程式表性出這種局部性,就考以獲得較高的命中率
+
+### Use Caching When Possible
+- the idea behind hardware caches is to take advantage of locality in instruction and data references
+  1. 時間局部性(temporal locality)
+    - 指的是最近訪問過的元素在短時間內很有可能再被訪問
+  2. 空間局部性(spatial locality)
+    - 指的是當成是訪問memory address為x時,在短時間內很有可能再訪問和x**相鄰**的memory
+- Cache 並不是越大越好,會因為物理限制而受到影響 (Memory Hierarchy將影響混合其他儲存硬體來避免物理限制)
+
+## Who Handles The TLB Miss
+1. 硬體
+  - 硬體需要知道page table在memory中的確切位址(透過page-tabe base register),以及page table確切的格式
+    - 因此發生miss的時候會**遍歷**整個page table,找到正確的page,取出translation information後更新TLB
+2. 軟體
+  - 使用RISC來處裡TLB Miss
+    - 當TLB Miss後硬體會拋出一個異常,將會暫停當前的instruction steam,並且將提升至kernal mode後跳轉至trap handler
+    - 這個trap handler用來處理TLB miss,當他運行時會查找page table中的translation information,然後使用privileged instruction來更新TLB
+
+- 軟體中的trap handler不同於之前os的trap handler
+  1. 會將PC重置到導致TLB miss的instruction,然後再次執行一次,這次就會TLB hit
+  2. 處裡TLB miss時為了必免處理程式陷入無線回圈的狀態
+    - 把TLB miss中trap handler直接放到physical memory中,讓一發生miss就直接強制觸發
+    - 在TLB中設定保留項,紀錄永久有效的translation address,並將一些槽塊給TLB miss處理程式,讓這些被wired的translation address永遠發生TLB hit
+
+- 相較於硬體處理方式,軟體具備的主要優勢
+  1. 靈活性: 可以用任意數據結構實現page table
+  2. 簡單性: hardware只需要拋出異常後,剩下交給TLB miss處裡程式即可
+
+## TLB的內容
