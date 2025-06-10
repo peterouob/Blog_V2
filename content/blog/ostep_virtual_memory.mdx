@@ -498,7 +498,7 @@ else
 </div>
 
 - 因此我們知道page的大小會影響結果,對於像array這種密集訪問的memory會獲得極好的性能
-- TLB的成功依賴於時間局部性(temporal locality)和空間局部性(spatial locality),只要某個程式表性出這種局部性,就考以獲得較高的命中率
+- TLB的成功依賴於時間局部性(temporal locality)和空間局部性(spatial locality),只要某個程式表性出這種局部性,就可以獲得較高的命中率
 
 ### Use Caching When Possible
 - the idea behind hardware caches is to take advantage of locality in instruction and data references
@@ -506,8 +506,11 @@ else
     - 指的是最近訪問過的元素在短時間內很有可能再被訪問
   2. 空間局部性(spatial locality)
     - 指的是當成是訪問memory address為x時,在短時間內很有可能再訪問和x**相鄰**的memory
-- Cache 並不是越大越好,會因為物理限制而受到影響 (Memory Hierarchy將影響混合其他儲存硬體來避免物理限制)
 
+### TLB瓶緊
+- Cache 並不是越大越好,會因為物理限制而受到影響 (Memory Hierarchy將影響混合其他儲存硬體來避免物理限制)
+- TLB很容易成為CPU流水線的性能瓶緊,尤其是當存在pyhsical-indexed cache,address translation 必須發生在access該cache前,這會導致動作變慢
+  - 使用virtual address直接訪問physical address 從而避免當發生cache hit時昂貴的address translation,像這種virtually-indexed cache解決了性能問題,但也為hardware design帶來新問題
 ## Who Handles The TLB Miss
 1. 硬體
   - 硬體需要知道page table在memory中的確切位址(透過page-tabe base register),以及page table確切的格式
@@ -515,7 +518,7 @@ else
 2. 軟體
   - 使用RISC來處裡TLB Miss
     - 當TLB Miss後硬體會拋出一個異常,將會暫停當前的instruction steam,並且將提升至kernal mode後跳轉至trap handler
-    - 這個trap handler用來處理TLB miss,當他運行時會查找page table中的translation information,然後使用privileged instruction來更新TLB
+    - 這個trap handler用來處理TLB miss,當他運行時會查找page table中的translation information,然後使用 privileged instruction來更新TLB
 
 - 軟體中的trap handler不同於之前os的trap handler
   1. 會將PC重置到導致TLB miss的instruction,然後再次執行一次,這次就會TLB hit
@@ -527,4 +530,69 @@ else
   1. 靈活性: 可以用任意數據結構實現page table
   2. 簡單性: hardware只需要拋出異常後,剩下交給TLB miss處裡程式即可
 
-## TLB的內容
+## Context switch 對 TLB 的處理
+
+- 在context switch時假設現在有P1,P2
+  - P1 VPN10映射到PFN100
+  - P2 VPN10映射到PFN170
+
+|VPN|PFN|Valid|Protect|
+|---|---|-----|-------|
+|10|100|1|rwx|
+|-|-|0|-|
+|10|170|1|rwx|
+|-|-|0|-|
+
+- 此時會發現當訪問VPN 10的TLB時會發現不知道要映射到的PFN是100還是170
+
+### 解決方法
+
+1. 清空(flush) TLB
+- flush 操作就是將全部的Valid設為0,本質上就是清空TLB
+  - 軟件:
+    - 發生上下文切換時,通過一條 privileged instruction完成
+  - 硬體:
+    - 可以在可以在page table base register 內容發生變化時清空TLB (當context switch時,os必須改變PTBR的值)
+
+- 當context switch時因為會清空TLB,如果頻繁切換process會造成大量開銷,因為會導致訪問數據或code page時都會觸發TLB Miss
+
+2. 增加硬體支持
+- 在TLB中增加Address Space Identifier (ASID),可以將ASID當成Process Identifier(PID),但通常會比一般的PID位數少(PID一般32位元,ASDI一般8位元)
+
+|VPN|PFN|Valid|Protect|ASID|
+|---|---|-----|-------|----|
+|10|100|1|rwx|1|
+|-|-|0|-|-|
+|10|170|1|rwx|2|
+|-|-|0|-|-|
+
+- 有了ASID時TLB可以同時緩存不同process的address space,不會造成任何衝突
+  - 硬體也需要知道當前是哪個process正在進行,以便進行address translation
+- 因此當發生context switch時,必須將某個 privileged register 設置為當前process的ASID
+
+### 另一種情況
+
+- 假設現在將兩個不同的VPN映射到相同的PFN
+
+|VPN|PFN|Valid|Protect|ASID|
+|---|---|-----|-------|----|
+|10|100|1|rwx|1|
+|-|-|0|-|-|
+|50|100|1|rwx|2|
+|-|-|0|-|-|
+
+- 這時可以用share page table的方法的方法來減少physical page的使用,從而減少了memory開銷
+
+## TLB 替換策略
+
+1. LRU(least-recently-used)
+  - 應用memory引用stream的局部性,將最近最少使用的項當作最先踢掉的項
+2. Random
+  - 隨機選擇一項換出去
+
+- 假設有一個程式循環訪問n+1個頁,但TLB只能存放n個頁,這時如果使用LRU就會顯得開銷變大(因為LRU會去訪問memory),因此應該使用random解決
+
+## RAM不總是RAM(Culler 定律)
+
+- Random-Access Memory初衷是為了讓訪問任何一個部分都一樣快,但結果其實必然.當訪問的random memory address並沒有被緩存在TLB時,可能導致嚴重的性能開銷
+
