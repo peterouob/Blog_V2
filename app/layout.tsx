@@ -10,6 +10,7 @@ import {Pheader} from "@/components/Pheader";
 export const metadata: Metadata = {
   title: "Blog",
   description: "This is my blog",
+  icons: "/avatar.jpg",
 };
 
 export default function RootLayout({

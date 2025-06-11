@@ -80,7 +80,7 @@ int main() {
   * 如果虛擬地址小於base register或大於bound register,則會報錯
   * 如果虛擬地址在base register和bound register之間,則將虛擬地址加上base register的值來獲得物理地址
 - 由上述可以得出一個公式
-$\text{physical address} = \text{virtual address} + \text{base register}$
+$ \text{physical address} = \text{virtual address} + \text{base register}$
 
 ### Bound Register作用
 - bound register是為了確保process不會超過其address space的範圍,如果process試圖訪問超出其address space的memory,則會報錯
@@ -699,8 +699,8 @@ $$
 
 $$
   \begin{aligned}
-    VPN = /frac{2^30}{2^9} = 2^21 = 21位 \\
-    Offset = log_2{512} = 9位
+    VPN = /frac{2^30}{2^9} = 2^21 = 21\text{位} \\
+    Offset = log_2{512} = 9\text{位}
   \end{aligned}
 $$
 
@@ -869,5 +869,84 @@ else // TLB Miss
   - 如果沒有free page會通知後台page daemon來釋放page直到釋放到一定數目,再喚醒原先進行swap的thread進行swap
 
 # Swapping: Policies
+- 今天在有限的memory中,os必須要能夠paging out一些page以避免memory pressure,而os要evict哪個page(或哪些page)封裝在replacement policy中
+
+## Cache management
+- 為了要橫量hardware緩存而設計了一個專門的指標: AMAT(Average Memory Access Time)來計算program的平均memory access time
+
+$$
+\begin{aligned}
+T_M &= \text{訪問memory 成本} \\
+T_D &= \text{訪問Disk 成本} \\
+P_{Hit} &= \text{在cache找到數據的概率(命中)} \\
+P_{Miss} &= \text{在cache中找不到數據的概率(未命中)} \\
+
+\{ P_{\text{Hit}}, P_{\text{Miss}} &| 0 \le P_{\text{Hit}} \le 1, \ 0 \le P_{\text{Miss}} \le 1, \ P_{\text{Hit}} + P_{\text{Miss}} \equiv 1 \} \\
+AMAT &= (P_{Hit} \cdot T_M) + (P_{Miss} \cdot T_D)
+\end{aligned}
+$$
+
+- 假設現在我們的hit rate為 90%, miss rate為 10%,每次訪問 memory成本為100ns,訪問Disk成本為10ms
+
+$$
+\begin{aligned}
+AMAT &= 0.9 \times 100ns + 0.1 \times 10ms \\
+AMAT &= 90ns + 1ms = 1.0009ms
+\end{aligned}
+$$
+
+- 此時假設我們命中率為99.9%($P_{Miss} = 0.001 $)的話AMAT會快大約100倍,而當Hit rate為100%時會非常接近訪問memory花費的成本
+
+## The Optimal Replacement Policy
+- 最佳替換策略的核心思想很簡單: evict 最晚才會再次訪問的page
+<Image src="../../public/v17.png" width="700" height="100" />
+- 假設現在cahce只能緩存3個page
+
+1. 前三次訪問都cache miss(這種miss也被稱為cold-start miss or compulsory miss)
+2. 再次訪問page0和page1都cache hit
+3. 這時新訪問了page3時就必須將其中一個page evict
+4. 由於可以發現page2會是相較之下最晚被再次訪問
+5. 踢掉page2然後將page3存進緩存中
+
+- 這時可以計算緩存命中率: 有6次的Cache hit和5次的Cache miss
+
+$$
+  Hit rate = \frac{Hits}{Hits+Misses} = \frac{6}{6+5} = 54.5\%
+$$
+
+- 假設去除cold-start cache再次計算(忽略每一個page 第一次的access),因此可以將圖表轉換成
+|Access|Hit/Miss?|
+|------|---------|
+|0|Hit|
+|1|Hit|
+|0|Hit|
+|3|Hit|
+|1|Hit|
+|2|Miss|
+|1|Hit|
+
+- 此時再重新計算Hit rate
+
+$$
+Hit rate = \frac{6}{6+1} = 85.7 \%
+$$
+
+- 不過The Optimal Replacement Policy建立在已知未來的情況,而未來是無法確定的,因此沒辦法透過os實現這種算法
+
+## FIFO
+
+## Random
+
+## LRU
+
+##  Implementing Historical Algorithms
+
+##  Approximating LRU
+
+##  Considering Dirty Pages
+
+## Other VM Policies
+
+## Thrashing
 
 # Complete VM Systems
