@@ -85,7 +85,7 @@ $\text{physical address} = \text{virtual address} + \text{base register}$
 ### Bound Register作用
 - bound register是為了確保process不會超過其address space的範圍,如果process試圖訪問超出其address space的memory,則會報錯
 - 進而隔離當前process和其他process,確保process之間不會互相干擾
-![](../../public/v2.png)
+<Image src="../../public/v2.png" width="700" height="100" />
 
 - process中使用德的memory引用都是virtual address,硬體接下來將vitrual address加上base register的值來獲得physical address
 - 底下簡化先前的asm code中指令的位址
@@ -214,7 +214,7 @@ $\text{physical address} = \text{virtual address} + \text{base register}$
 
 # Segmentation
 - 目前的情況都是將所有的process載入到Memory中,並且使用base/bound register來讓os將不同的process進行address translation到不同的physical address,但這樣會發現在stack和heap間存在很大的空閑區塊
-![](../../public/v1.png)
+<Image src="../../public/v1.png" width="1000" height="100" />
 
 ## Segmentation 范化的base/bound
 - 在MMU中引入不只base/bound register,而是給address space內的每個segment一對,一個segment只是address space中的連續定長區域,典型的segment有3個部分
@@ -236,7 +236,7 @@ $\text{physical address} = \text{virtual address} + \text{base register}$
 - 當我們試圖訪問超過bound的address時,就會發生segmentation violation 或是 segmentation fault
 
 ## 怎麼知道調用的是那個Segment
-![](../../public/v3.png)
+<Image src="../../public/v3.png" width="700" height="100" />
 
 - 由圖中可以知道前兩位代表的是告hardware説調用的是哪一個段(stack,heap,code),剩下的12位則是偏移量
   - 因此先使用前兩位找到相對應的segment後再使用偏移量+基底address就可以獲得實際的物理位址
@@ -359,7 +359,7 @@ movl <virtual address>, %eax
 
 - 從剛剛virtual memory中的圖可以知道將64byte空間分成4個page,因此每個page為16byte
 $$
-  64Byte/4Byte = 16Byte
+  \frac{64\text{Byte}}{4\text{Byte}} = 16Byte
 $$
 - 然後virtual address space總共為64byte,因此地址總共需要6位
 $$
@@ -375,7 +375,7 @@ VPN = \log_2{4} = 4
 \end{align*}
 $$
 
-<Image src="../../public/v6.png" width="300" height="100" />
+<Image src="../../public/v6.png" width="700" height="100" />
 ### Example
 - 假設尋找virtual address為21
 1. 先將21轉為2進制 $010101$
@@ -435,7 +435,7 @@ for(int i=0;i<1000;i++)
 - 假設有一張線性表(array)則可以由此推斷出在此數組中VPN對應的PFN
   - mov 則會有一個顯示的memory 引用,這會先增加另一個page table訪問(將數組vritual address轉換成正確的physical address)
 
-<Image src="../../public/v7.png" width="600" height="400" />
+<Image src="../../public/v7.png" width="700" height="400" />
 
 - 假設現在超過圖中的5次訪問
   1. 當找到超過當前VPN時會進行換頁查找
@@ -488,14 +488,13 @@ else
 - 因為訪問page table需要額外的memory access因此造成較大的性能開銷,因此我們會希望盡量避免TLB miss
 
 ## Access array
-<div class="flex">
 
 1. 一開始先訪問a[0],TLB miss後將VPN=06的translation information都放入cahce
 2. 接下來訪問a[1],就可以直接TLB hit然後進行轉換
 3. 因此最後總共會有7次的TLB hit,3次的TLB miss, hit rate為70%
+
 <Image src="../../public/v8.png" width="300" height="100" />
 
-</div>
 
 - 因此我們知道page的大小會影響結果,對於像array這種密集訪問的memory會獲得極好的性能
 - TLB的成功依賴於時間局部性(temporal locality)和空間局部性(spatial locality),只要某個程式表性出這種局部性,就可以獲得較高的命中率
@@ -596,3 +595,279 @@ else
 
 - Random-Access Memory初衷是為了讓訪問任何一個部分都一樣快,但結果其實必然.當訪問的random memory address並沒有被緩存在TLB時,可能導致嚴重的性能開銷
 
+# Paging: Smaller Tables
+- 線性表非常的大,假設有一個32位元$2^{32}Byte$ address space, 4KB的page且每一個page entry都為4byte,page table大小大約4MB
+- 通常一個process都會有一個page table,因此造成Memory非常大的負擔
+
+## 解決方法1 更大的page
+- 現在將page變更大來儲存更多的內容,原先的page entry為 $ \frac{2^{32}}{2^{12}} = 2^{20}$ 個 entry
+  - page table 大小為 $2^{20} * 2^2 = 2^{22} = 4MB$
+- 假設我們將page變成16KB,現在entry數量變為 $\frac{2^{32}}{2^{14}} = 2^{18}$ 個entry
+  - 重新計算後總共的page table為 $2^{18} * 2^2 = 1MB $
+- 但大memory table會造成internal fragmentation 問題(因為浪費在分配單元內部),應用程式會分配page,但每次都只會用其中的一小部分,導致這些memory很快就會充滿這些大page
+
+## 解決方法2 混合使用 Segment 和 Paging
+- 和一般Segment不同的在於原先Segment中的 base/bound register指向的是Segment本身,混合使用時則時
+  - Base register: 該Segment的page table 在physical memory中的address
+  - Bound register: 該page table的結尾(即有多少Valid page)
+- 混合方法的vritual memory如下,address space前兩位
+
+<Image src="../../public/v9.png" width="700" height="100" />
+
+|sign|segment|
+|----|-------|
+| 00 | 未使用segement|
+| 01 | code segment|
+| 10 | heap segment|
+| 11 | stack segment|
+
+- 現在每個segment的base register都會包含該segment的page table physical address,因此每個process都會有3個與其關聯的page(code,heap,stack)
+  - 當發生context switch 時必須更改這些base register,以反應新運行process的page table位址
+
+### TLB Miss
+- 當發生TLB Miss的時候,hardware使用SN(分段位)來確定要使用的base/bound pair,然後將其physical address與VPN結合,形成PTE(page table entry)的地址
+```c
+SN = (VirtualAddress & SEG_MASK) >> SN_SHIFT;
+VPN = (VirtuaalAddress & VPN_MASK) >> VPN_SHIFT;
+AddressOfPTE = Base[SN] + (VPN * sizeof(PTE));
+```
+
+- 因為每個segment都有base/bound register,且保存了segment的最大valid page,因此heap和stack間未分配的page不再佔用page table的空間(將valid標示為0)
+- 但遺憾的是因為使用segment因此失去了靈活性,而且有一個大而稀疏的heap任然導致大量page table的浪費
+
+## Multi-level Page Tables
+- Multi-level page table將線性page table轉換成類似tree的結構,而不依賴segment且將page table中的無效區域捨去而不是放在memory中
+- 核心思想是使用page directory來追蹤page table中的page是否有效
+
+## 簡單二級表
+- 從下圖可以發現 page directory 具備多個Page Directory Entries(PDE) 用來存放Page table
+- PDE至少擁有valid bit和oage frame number (PFN)
+
+|PDE|含義|PTE|
+|---|----|---|
+|1|透過PFN指向的page table至少有一page是有效的|1
+|0|PDE其餘部分都沒有意義|0(無意義)|
+
+![](../../public/v10.png)
+
+-  multi-level table only allocates page-table space in proportion(部分) to the amount of address space you are using
+  - 因此通常緊湊且支持稀疏的address space
+
+- 在Mulit-level page table中page table的每個部分都可以放入page directory中,因此比非分頁線性page table更好管理
+  - 非分頁線性page table 需要按照VPN indexed 的 PTE array找到,對於一個相對大的page table,要找到能存放他的連續空閑physical address是相對困難
+  - multi-level page table使用一個中間層(level of indirection)即為page directory管理page table的各個部分,由於間接的方式,能將page table放在memory的任何地方
+
+### 缺點
+1. Multi-Level page table發生TLB Miss的時候,會需要訪問兩次memory才可以從Page table中或正確的translation address(一次page directory,一次PTE本身)
+  - 因此Multi-level page table 為一種time-space trad-off,以較小的空間換取較大的操作成本
+    - time-space trad-off(時空折中)指的是對一結構而言,兩者成反比,更好的空間就會獲得較差的時間(運行速度慢)
+2. Multi-Level page table 相較 Linear page table 複雜很多,無論是 hardware還是os來處理TLB miss的查找page動作
+
+## 詳細的Multi-level page table
+- 現在假設我們有16KB的address space包含64個page,可以很簡單的計算出他的資訊
+$$
+  \begin{aligned}
+    virtual \ address \ space &= 16KB &= 2^{14} &= 14 \\
+    VPN &= log_2{64} &= 8 \\
+    Offset &= 14 - 8 &= 6
+  \end{aligned}
+$$
+
+- 使用VPN的前四位當作page directory indexed(PDIndex),有了PDIndex就可以找到page directory entry address (PDE addr)
+  - In this example have 256 entries, spread across 16 pages
+$$
+  PDI = log_2{/frac{entries}{pages}}
+$$
+
+<Image src="../../public/v11.png" width="700" height="100" />
+
+$$
+  PDE addr = PageDirBase + (PDIndex \times sizeof(PDE))
+$$
+
+- 假設該PDE address的page directory被標記為有效的話,使用後VPN的後四位當作page table indexed(PTIndex),目的是為了從page directory 中找到指向的page table並獲取其中的page table entry(PTE)
+  - 這個PTIndex可以用來從page table中找到page table entry Address(PTEAddr)
+
+<Image src="../../public/v12.png" width="700" height="100" />
+
+$$
+  PTEAddr = (PDE.PFN \ll SHIFT) + (PTIndex \times sizeof(PTE))
+$$
+
+## 超過兩級
+- 現在假設有一個30KB的virtual address space和一個512Byte的page(一樣先計算可用訓息)
+
+$$
+  \begin{aligned}
+    VPN = /frac{2^30}{2^9} = 2^21 = 21位 \\
+    Offset = log_2{512} = 9位
+  \end{aligned}
+$$
+
+- 因為page的大小為512Byte且PTE大小為4MB,因此可以計算出Offset(相當這一個page table entry中可以放入多少page)
+  - 經過計算一個page table可以容納128個page
+$$
+  PT Indexed = log_2{128} = 7
+$$
+- 因此將VPN的最低7位元當作PTE Indexed (目的是讓page table知道該指向哪一個page table entry)
+
+<Image src="../../public/v13.png" width="700" height="100" />
+
+- 現在可以注意到還有14個位元留給page directory,假設我們將它看作page的話,offset沒辦法指向所有page
+- 因此這時候將這14位進行切割,並讓他們當成指向其他page directory的index
+
+
+<Image src="../../public/v14.png" width="700" height="100" />
+
+- VPN的前7位(PD index 0)用於fetch the page directory entry from the top-level page directory
+- 如果valid的話,可以通過組合
+  1. top-level Page directory entry(PDE)的physical frame number(PFN)
+  2. VPN後7位元(PD index 1)
+來查閱 second-level PDE
+
+- 假設second-level PDE有效,thee PTE address can be formed(形成) by using the page-table index combined with the address from the second-level PDE
+
+## The Translation Process: Remember the TLB
+- hardware會先檢查TLB,如果TLB hit的話physical address 可以直接獲得,而不用重新訪問page table
+- 只有當TLB miss的時候,hardware 才需要執行完整的 multi-level 查詢 (兩次額外的memory access)
+```c
+  VPN = (VirtualAddress & VPN_MASK) >> SHIFT
+  (Success, TlbEntry) = TLB_Lookup(VPN)
+  if (Success == True) // TLB Hit
+    if (CanAccess(TlbEntry.ProtectBits) == True)
+      Offset = VirtualAddress & OFFSET_MASK
+      PhysAddr = (TlbEntry.PFN << SHIFT) | Offset
+      Register = AccessMemory(PhysAddr)
+    else
+      RaiseException(PROTECTION_FAULT)
+  else // TLB Miss
+   // first, get page directory entry
+    PDIndex = (VPN & PD_MASK) >> PD_SHIFT
+    PDEAddr = PDBR + (PDIndex * sizeof(PDE))
+    PDE = AccessMemory(PDEAddr)
+    if (PDE.Valid == False)
+      RaiseException(SEGMENTATION_FAULT)
+    else
+      // PDE is valid: now fetch PTE from page table
+      PTIndex = (VPN & PT_MASK) >> PT_SHIFT
+      PTEAddr = (PDE.PFN<<SHIFT) + (PTIndex*sizeof(PTE))
+      PTE = AccessMemory(PTEAddr)
+      if (PTE.Valid == False)
+        RaiseException(SEGMENTATION_FAULT)
+      else if (CanAccess(PTE.ProtectBits) == False)
+        RaiseException(PROTECTION_FAULT)
+      else
+        TLB_Insert(VPN, PTE.PFN, PTE.ProtectBits)
+        RetryInstruction()
+```
+
+# Swapping: Mechanisms
+- 現在假設的都是address space 非常小能直接放入physical memory,為了支持更大的address space需要在memory hierarchy上增加一層
+  - 儲存結構變為大而慢的disk在底層
+
+<Image src="../../public/v15.png" width="800" height="100" />
+
+## Why Need Bigger address space
+1. 有了巨大的address space,不用擔心是否有足夠空間儲存
+2. os為concurrency提供巨大address space 的 illusion
+- 因此易用性和concurrency都是現代virtual memory system 會做的事情
+
+## Swap Space
+- 將memory中的page交換到swap space中,並在需要的時候swap 回去(os需要寄主給定page的disk address)
+  - swap space大小決定了某時刻能使用的最大memory page數
+
+- 由此圖片可以很簡單看出哪些process沒被執行(在swap space上),且可以發現swap space $\rr$ physical address
+  - swap space不會區分stack,code或是heap等,而是全部放一起
+<Image src="../../public/v16.png" width="700" height="100" />
+
+- 為了允許page被交換到disk,因此需要新增present bit在page table entry上
+
+|present bit|意義|
+|-----------|----|
+|1|代表該page 在 physical memory 中,並且所有內容都在進行|
+|0|代表page不在memory中,而是在disk|
+
+- 假設訪問不在physical memory上的page會觸發page fault,會由os專門處理(page-fault handler)
+
+## page-fault
+
+- os該如何知道假設發生page-fault的page在哪裡(因為在page-fault handler的時候會將錯誤的page從disk swap 回 memory)
+- os可以用PTE(page table entry)的位來儲存像page的PFN(page frame number)數據
+
+### 演示如何查找到發生問題的page
+
+1. 當os接收到page-fault的錯誤時,會在PTE中查找address,並將request發給disk,再將page讀取到memory中
+2. 當DISK完成I/O之後,os更新page table將page的標記改為存在(存在在memory中)
+3. 更新PTE的PFN已紀錄新獲取page的memory address
+4. 重試instruction
+  ```c
+  PFN = FindFreePhysicalPage()
+  if (PFN == -1) // no free page found
+    PFN = EvictPage() // replacement algorithm
+  DiskRead(PTE.DiskAddr, PFN) // sleep (wait for I/O)
+  PTE.present = True // update page table:
+  PTE.PFN = PFN // (present/translation)
+  RetryInstruction() // retry instruction
+  ```
+5. 此時發生TLB Miss,但因為此時的page已經在memory中,因此更新TLB
+6. 重試instruction
+7. TLB hit,找到translation address並從中獲取所需的data或instruction
+
+- IO運行時process將會處於block狀態,因此當page-fault正常handle時,os會去運行其他能夠running的process
+  - 利用一個process進行IO(page-fault)時執行其他process稱為overlap
+
+- 底下程式碼已經先將information從DISK swap 到 memory
+```c
+VPN = (VirtualAddress & VPN_MASK) >> SHIFT(Success, TlbEntry) = TLB_Lookup(VPN)
+if (Success == True) // TLB Hit
+  if (CanAccess(TlbEntry.ProtectBits) == True)
+    Offset = VirtualAddress & OFFSET_MASK
+    PhysAddr = (TlbEntry.PFN << SHIFT) | Offset
+    Register = AccessMemory(PhysAddr)
+  else
+    RaiseException(PROTECTION_FAULT)
+else // TLB Miss
+  PTEAddr = PTBR + (VPN * sizeof(PTE))
+  PTE = AccessMemory(PTEAddr)
+  if (PTE.Valid == False)
+    RaiseException(SEGMENTATION_FAULT)
+  else
+    if (CanAccess(PTE.ProtectBits) == False)
+      RaiseException(PROTECTION_FAULT)
+    else if (PTE.Present == True)
+      // assuming hardware-managed TLB
+      TLB_Insert(VPN, PTE.PFN, PTE.ProtectBits)
+      RetryInstruction()
+    else if (PTE.Present == False)
+      RaiseException(PAGE_FAULT)
+```
+
+- 可以注意到TLB miss發生的3種情況
+1. 該page present bit為1且valid
+  - TLB可以簡單從PTE中獲取PFN然後重試
+2. 該page present bit為0但valid
+  - 需要從Disk中拿回並存到memory
+3. 訪問的是 unvalid
+  - PTE其他位都不重要了,並且hardware捕獲這個非法access,os trap handler可能將kill process
+
+### Why not use hardware
+- 從TLB知道hardware designer不信任os所做的事情,那為什麼會讓os進行page-fault的handle?原因如下
+1. page fault導致disk操作很慢,即使os需要花費大量時間/instruction來處理,但相較於disk開銷還是很小
+2. 為了處理page-fault,hardware必須了解swap space和其他細節
+
+- 因此由於性能和難易度的關係,os來處理page-fault也是hardware designer認可的事情
+
+##  When Replacements Really Occur
+- OS並不會等到沒有空間了才進行swap(踢出page為其他page騰出空間),而是會預留一小塊free memory
+- 為了保證有少量的free memory,OS會設定High Watermark (HW)和Low Watermark (LW)來幫助決定何時清除page
+
+1. os發現可用的page少於LW
+2. 後台負責釋放memory的thread開始運行
+  - 這個thread也被稱為swap daemon或page daemon
+3. 當os發現可用的page大於HW,後台thread進入休眠
+- 為了配合後台的page thread,控制disk交換到memory的algorithm需要新增:先簡單檢查是否有free page,而不是直接替換
+  - 如果沒有free page會通知後台page daemon來釋放page直到釋放到一定數目,再喚醒原先進行swap的thread進行swap
+
+# Swapping: Policies
+
+# Complete VM Systems
