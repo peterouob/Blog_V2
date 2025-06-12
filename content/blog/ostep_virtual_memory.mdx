@@ -699,8 +699,8 @@ $$
 
 $$
   \begin{aligned}
-    VPN = /frac{2^30}{2^9} = 2^21 = 21\text{位} \\
-    Offset = log_2{512} = 9\text{位}
+    VPN &= /frac{2^{30}}{2^9} = 2^{21} = 21\text{位} \\
+    Offset &= log_2{512} = 9\text{位}
   \end{aligned}
 $$
 
@@ -776,7 +776,7 @@ $$
 - 將memory中的page交換到swap space中,並在需要的時候swap 回去(os需要寄主給定page的disk address)
   - swap space大小決定了某時刻能使用的最大memory page數
 
-- 由此圖片可以很簡單看出哪些process沒被執行(在swap space上),且可以發現swap space $\rr$ physical address
+- 由此圖片可以很簡單看出哪些process沒被執行(在swap space上),且可以發現$physical address < swap space$
   - swap space不會區分stack,code或是heap等,而是全部放一起
 <Image src="../../public/v16.png" width="700" height="100" />
 
@@ -915,6 +915,7 @@ $$
 $$
 
 - 假設去除cold-start cache再次計算(忽略每一個page 第一次的access),因此可以將圖表轉換成
+
 |Access|Hit/Miss?|
 |------|---------|
 |0|Hit|
