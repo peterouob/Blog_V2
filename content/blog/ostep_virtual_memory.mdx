@@ -934,12 +934,22 @@ $$
 - 不過The Optimal Replacement Policy建立在已知未來的情況,而未來是無法確定的,因此沒辦法透過os實現這種算法
 
 ## FIFO
+- 就像Queue一樣,假設現在memory已經滿了,但又有新的cache要插入,將最先被放入的給evict
+
+<Image src="../../public/v18.png" width="700" height="100" />
 
 ## Random
+- 當memory滿的時候隨機選擇一個page將他evict,具有和FIFO一樣實現簡單的屬性
+
+<Image src="../../public/v19.png" width="700" height="100" />
 
 ## LRU
+- 藉由將歷史訊息當作訪問頻率,如果一個page被訪問多次就不該被evict,並且這個訪問更看重recency,越接近需要evic時被訪問的page,再次訪問的機率更大
+  - 像LRU/LFU這種依照局部當全局來設計的策略便是局部性原則(principle of locality)
 
-##  Implementing Historical Algorithms
+<Image src="../../public/v20.png" width="700" height="100" />
+
+- 但實現LRU的代價非常昂貴,因此引發新的問題: 是否真的需要找到最舊的page替換
 
 ##  Approximating LRU
 
