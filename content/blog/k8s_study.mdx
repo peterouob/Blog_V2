@@ -2,6 +2,7 @@
 title: k8s實作
 description: 操作k8s範例
 date: 2025/06/30
+tags: ["k8s"]
 ---
 
 # 用Kind創建k8s cluster
@@ -104,3 +105,56 @@ kubectl get pod -o wide #獲得詳細內容
 
 ## service
 - 現在有個問題是k8s內的服務如果因為錯誤導致pod重啟時,ip也會跟著變動,因此我們需要使用service來固定pod的ip,儘管他遭到刪除等問題后重啟,ip依然不變
+```yaml
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: svc-blog
+
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 5678 #外部訪問端口
+      targetPort: 5678 #容器內程式開啟端口(原始端口)
+      protocol: TCP
+  selector:
+    app: blog #對應pod的label
+```
+
+- 使用svc來取代直接訪問pod內部實現了loadbalance
+
+## node selector
+- 假設我們有特別的pod希望部署到特殊的server上,可以使用標籤的方式在node上設定標籤
+```bash
+k label nodes dqq-worker hp=true
+```
+- 查看node標籤
+```bash
+k label nodes dqq-worker --list 
+```
+- 當前標籤下node的訊息
+```bash
+k get node -l hp=true             
+```
+- 在創建pod的時候新增node selector,來指定對應node的標籤
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+
+# ...
+
+spec:
+  replicas: 1 
+  template: 
+# ...
+    metadata:
+# ...
+      labels: 
+      # ...
+      nodeSelector:
+        hp: "true"
+```
+
+- 可以發現這一個pod永遠沒辦法調度到node-work2上,因為該node並沒有 `hp: "true"`這一個標籤
