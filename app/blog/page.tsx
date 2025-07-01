@@ -30,7 +30,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
             <div className="grid grid-cols-1 sm:grid-cols-12 lg:gap-3 lg:mt-8">
               <div className="col-span-12 sm:col-span-12 md:col-span-8 lg:text-xl">
                 {displayPosts.map((post) => {
-                  const {slug, date, title, tags } = post;
+                  const {slug, date, title} = post;
                   return (
                       <ul key={slug}>
                         <li className="no-underline list-none  dark:text-zinc-50">
@@ -38,7 +38,6 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
                               slug={slug}
                               date={date}
                               title={title}
-                              tags={tags}
                               key={slug}
                           />
                         </li>
