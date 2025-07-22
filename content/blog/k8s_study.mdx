@@ -158,3 +158,108 @@ spec:
 ```
 
 - 可以發現這一個pod永遠沒辦法調度到node-work2上,因為該node並沒有 `hp: "true"`這一個標籤
+
+## ingress
+- 現在問題是目前部署在k8s的服務都只能從內部訪問
+  - 因此使用nginx將服務代理出來
+
+### 對cluster新增port映射
+- 因為nginx默認開啟的port和當前服務開啟的port不一樣,因此需要新增port mapping
+```yaml
+apiVersion: kind.x-k8s.io/v1alpha4
+kind: Cluster
+name: dqq
+nodes:
+  - role: control-plane
+    extraPortMappings:
+    - containerPort: 80
+      hostPort: 80
+      protocol: TCP
+    - containerPort: 443
+      hostPort: 443
+      protocol: TCP
+  - role: worker
+  - role: worker
+```
+
+- 重新建立cluster
+```bash
+kind delete cluster --name dqq
+kind create cluster --config cluster-dqq.yaml
+```
+
+- 安裝ingrss controller
+- 所有的k8s都可以是一個yaml欓,這邊使用yaml檔進行安裝
+  - 會發現其中存在一個nodeSelector,而因為我們希望安裝在control-plane上,因此也需要新增標籤
+#### ingress-controller.yaml
+```yaml
+      nodeSelector:
+        ingress-ready: "true"
+        kubernetes.io/os: linux
+```
+- 新增label
+```bash
+k label nodes dqq-control
+```
+- 安裝ingress-controller
+```bash
+k apply -f ingress-controller.yaml
+```
+- 查看pod情況
+  - 因為ingress-controller檔案中都有新增一個namespace
+    ```
+  namespace: ingress-nginx
+    ```
+- 因此需要指定namespace
+```bash
+k get pod -n ingress-nginx
+k get pod -n ingress-nginx -o wide
+```
+- 目前image還沒有加入到新cluster中,因此需要重新加入一次(先前使用docker建立完畢)
+```bash
+kind load docker-image blog:v1.0.0 --name dqq
+```
+- 部署pod到k8s cluster上
+```bash
+k apply -f dep-dqq.yaml
+```
+- 查看pod裡面的訊息
+```bash
+kubectl describe pod <pod-name> -n <namespace>
+```
+- 此時發現錯誤
+  - 發現和nodeSelector有關
+```json
+{node-role.kubernetes.io/control-plane: }, 2 node(s) didn't match Pod's node affinity/selector. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling}
+```
+- 將之前在deployment文件裡面的nodeSelector刪除後再重新應用就可以了
+- 因為要能夠被訪問,因此還需要部署service
+```bash
+k appliy -f svc-dqq.yaml
+```
+- 從service查看port
+```bash
+k get svc
+```
+
+### 配置nginx
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-nginx
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /blog #訪問/blog時實際上會導向service上
+        pathType: Prefix
+        backend:
+          service:
+            name: svc-blog
+            port:
+              number: 5678 #node的port
+```  
+- 之後apply後就可以從外部訪問pod了
