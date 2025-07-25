@@ -1,0 +1,64 @@
+---
+title: 訪問go struct的私有變數
+description: 用一些小方法來訪問go struct的私有變數
+date: 2025-07-25
+tags: ["go"]
+---
+
+## 建立struct
+```go
+package model
+
+type Student struct {
+	age int
+}
+
+func NewStudent(age int) *Student {
+	return &Student{
+		age: age,
+	}
+}
+
+func (s *Student) GetAge() int {
+	return s.age
+}
+```
+
+## 釐清struct
+[struct byte](https://medium.com/techverito/golang-struct-size-and-memory-optimisation-b46b124f008d)
+
+- 因此可以想到或許能用pointer的方式嘗試訪問
+
+## 搭配使用reflect
+- 為了要訪問struct的成員變數,需要搭配使用reflect來獲得struct的成員offset
+- 此時可以想到或許只要拿到struct的pointer再加上該成員的offset即可訪問
+
+## 實作
+
+1. 獲得struct的變量並且檢查type
+  - 之所以用pointer的方式是因為直接訪問st的話得到的會是`*model.Student`
+```go
+	st := model.NewStudent(12)
+	log.Println(reflect.TypeOf(*st)) // model.Student
+```
+
+2. 獲得offset
+
+```go
+	v := reflect.ValueOf(*st)
+	typ := v.Type()
+	age, find := typ.FieldByName("age")
+	if !find {
+		log.Println("cannot find age from student")
+	}
+	offset := age.Offset
+```
+
+3. 獲取值並且嘗試更改已確認能對該struct私有成員進行操作訪問
+
+```go
+  ptr := (*int)(unsafe.Add(unsafe.Pointer(st), offset))
+	log.Println(st.GetAge()) //12
+	*ptr = 24
+	log.Println(*ptr) //24
+```
