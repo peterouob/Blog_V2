@@ -12,7 +12,7 @@ export function Pheader() {
         <div
             className={cn(
                 "relative bg-cover bg-center shadow-lg",
-                pathname === "/" ? "2xl:h-[85rem] lg:h-[60rem] h-[40rem]" : " 2xl:h-[35rem] lg:h-[25rem] h-[20rem]",
+                pathname === "/" ? "2xl:h-[50rem] lg:h-[40rem] h-[40rem]" : " 2xl:h-[25rem] lg:h-[15rem] h-[20rem]",
                 "bg-transparent dark:bg-black/50"
             )}
             style={{
