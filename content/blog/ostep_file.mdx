@@ -227,7 +227,7 @@ $$
 \end{align*}
 $$
 
-# RAID 0級: striping
+## RAID 0級: striping
 - striping可以作為性能和容量上限,在系統上的disk上將block進行striping
 - 從穩態吞吐的角度,我們期望獲得系統的全部帶寬
 
@@ -245,12 +245,12 @@ $$
 - 以輪轉方式將disk array的block分布在disk上,目的是在對array連續block進行request時,從array中獲取最大的並行性
   - 將同一row的block稱為strip,因此0,1,2,3在相同strip上
 
-## Chunk Size
+### Chunk Size
 - 大小較小的chunk意外著許多文件將跨多個disk進行striping,從而增加了對單個file的rw並行性
   - 但是定位時間也會增加,因為整個request的請求定位時間由所有drive上請求的最大定位時間決定
 - 較大的chunk大小減少了文件內的並行性,因此依靠多個並發請求來實現高吞吐量
 
-# RAID 1級 (Mirror)
+## RAID 1級 (Mirror)
 - 在striping的基礎上為每一個block生成多個副本,並且放在一個單獨的disk上以容忍disk故障
 
 |disk0|disk1|disk2|disk3|
@@ -262,7 +262,7 @@ $$
 
 - 在讀取時可以從任一副本中讀取,寫入時則必須保證副本內容皆一致(可以並行寫入)
 
-## RAID 1級分析
+### RAID 1級分析
 1. 容量(capacity)
     - 對於N個disk,Mirror可用容量為 $N/2$
 2. 可靠性(reliability)
@@ -273,7 +273,7 @@ $$
     - 因為要同時寫入副本,因此帶寬為 $ \frac{N}{2} \cdot S $,原因是不會同時處理所有請求
       - 隨機寫入 $ \frac{N}{2} \cdot R MB/s $,獲得一半可用帶寬實際上相當不錯,因為許多小請求的帶寬只能達到我們看到striping的一半
 
-# RAID 4級parity
+## RAID 4級parity
 - 用時間換取空間,藉由奇偶效驗的方式試圖使用較少的容量,克服由mirror付出的巨大空間損失
 
 |disk0|disk1|disk2|disk3|disk4|
@@ -292,3 +292,113 @@ $$
 
 - 只需要讀取該row中的所有值(包含XOR的奇偶效驗位)並且重構(reconstruct)正確答案,就可以利用奇偶效驗訊息從故障中回覆
 
+### RAID 4級分析
+- 使用一個disk作為他所保護的每組disk奇偶效驗的訊息
+- 穩定吞吐量可以使用奇偶效驗disk以外的其他Disk完成,因此提供 $(N-1) \cdot SMB/s$
+- 寫入方面的話,RAID 4級使用full-stripe write的方式寫入
+  - 假設要寫入block 0,1,2,3,先通過讀取的方式計算P0的新值(XOR(0,1,2,3)),接著就可以並行的方式寫入對應的請求的Block
+    - 順序寫入的有效帶寬即為$(N-1) \cdot S MB/s$
+- 隨機讀取的話帶寬為$(N-1) \cdot RMB/s$,因為隨機讀取將分布在系統的數據Disk上,奇偶效驗不會參與到
+
+|disk0|disk1|disk2|disk3|disk4|
+|-----|-----|-----|-----|-----|
+|0|1|2|3|P0|
+|4|5|6|7|P1|
+
+- 現在的情況是,假設我們需要寫Block1,該如何正確有效的更新P0(奇偶效驗值)
+1. 加法效驗(additive parity)
+  - 並行讀取其他Block的值,然後使用XOR的方式計算新的P0,新數據block和新奇偶效驗值也可以並行寫入
+    - 問題是當Disk數量變化,在較大的RAID中需要讀取大量的Block導致性能下降
+2. 減法效驗(subtractive parity)
+- 假設目前block和奇偶效驗值為
+
+|C0|C1|C2|C3|P|
+|--|--|--|--|--|
+|0|0|1|1|XOR(0,0,1,1)=0|
+
+- 流程如下
+1. 假設我們需要使用新值來覆蓋C2
+```lua
+C_old = C2
+C_new = read(C2_new)
+P_old = P0
+
+if C_old == C_new then
+  P_new = P_old
+else
+  P_new = (C_old XOR C_new) XOR P_old
+end
+```
+
+- 隨機寫入
+  - 假設同時獲得Block 1和 Block 4的寫入請求,那必須要讀取P0和P1的值
+  - 儘管可以並行的讀取Block 1和Block 4,奇偶效驗Disk沒有辦法實現任何並行(因為P0和P1都在Disk4上)
+    - 這也被稱為基於奇偶效驗的RAID小寫入問題(small-write problem),其中可以計算奇偶效驗Disk在這兩個IO(每個邏輯IO上的RW)上的性能來計算隨機寫入性能
+  - RAID中小寫入性能非常糟糕,並且添加Disk也不會改善(原因是主要都是奇偶效驗Disk的性能瓶頸)為$(R/2) MB/s$
+
+|disk0|disk1|disk2|disk3|disk4|
+|-----|-----|-----|-----|-----|
+|0|1|2|3|P0|
+|4|5|6|7|P1|
+
+## RAID 5級 旋轉奇偶效驗
+- RAID 5級和4集基本上工作原理完全相同,不同的是將奇偶效驗塊跨driver的旋轉
+
+|disk0|disk1|disk2|disk3|disk4|
+|-----|-----|-----|-----|-----|
+|0|1|2|3|P0|
+|5|6|7|P1|4|
+|10|1|P2|8|9|
+|15|P3|12|13|14|
+
+
+### RAID 5級分析
+- 性能好是因支持並行(相當於操作Disk)
+- 除了隨機寫入以外,其他和RAID 4級基本上一樣
+- 寫入Block 1和10的話,相當於
+    1. 寫入Block 1轉變成對Disk 1和 Disk 4的請求(block 1和其奇偶效驗)
+    2. 寫入Block 10轉變成對Disk 0和 Disk 2的請求(block 10和其奇偶效驗)
+- 因此現在寫入的Disk都不一樣,因此可以並行寫入,而提高性能
+- 因此帶寬為$ \frac{N}{4} \cdot RMB/s$,其中4被損失為每個RAID-5寫入產生的總IO操作
+- 有時候使用RAID-4還是比RAID-5,主要是構建簡單,且功能差不多,並且當系統知道自己只執行大寫入操作時(這樣避免了小寫入問題)
+
+## RAID 總結
+
+
+|                  | RAID-0      | RAID-1                                   | RAID-4                | RAID-5                |
+| ---------------- | ----------- | ---------------------------------------- | --------------------- | --------------------- |
+| **Capacity**     | $N \cdot B$ | $\frac{N \cdot B}{2}$                    | $(N - 1) \cdot B$     | $(N - 1) \cdot B$     |
+| **Reliability**  | 0           | 1 (for sure) or $\frac{N}{2}$ (if lucky) | 1                     | 1                     |
+| **Throughput**   |             |                                          |                       |                       |
+| Sequential Read  | $N \cdot S$ | $\frac{N}{2} \cdot S^1$                  | $(N - 1) \cdot S$     | $(N - 1) \cdot S$     |
+| Sequential Write | $N \cdot S$ | $\frac{N}{2} \cdot S^1$                  | $(N - 1) \cdot S$     | $(N - 1) \cdot S$     |
+| Random Read      | $N \cdot R$ | $N \cdot R$                              | $(N - 1) \cdot R$     | $N \cdot R$           |
+| Rando Write     | $N \cdot R$ | $\frac{N}{2} \cdot R$                    | $\frac{1}{2} \cdot R$ | $\frac{N}{4} \cdot R$ |
+| **Latency**      |             |                                          |                       |                       |
+| Read             | $T$         | $T$                                      | $T$                   | $T$                   |
+| Write            | $T$         | $T$                                      | $2T$                  | $2T$                  
+
+1. 對性能不要求的話,strip顯然是最好的
+2. 想要隨機IO的性能和可靠性,Mirror是最好的,但代價是容量下降
+3. 容量和可靠性是主要目標,選擇RAID-5,付出的代價是小寫入的性能
+4. 按順序執行IO操作並且希望容量最大化,選擇RAID-5也是最有意義的
+
+
+# Files and Directories
+
+<MermaidDiagram chart={`
+graph TD
+  root((/))
+    foo((foo))
+    bar((bar))
+    foo_txt((bar.txt))
+    bar2((bar))
+    foo2((foo))
+    foo2_txt((bar.txt))
+
+    root --> foo
+    root --> bar
+    foo --> foo_txt
+    bar --> bar2
+    bar --> foo2
+    foo2 --> foo2_txt`} />
